@@ -125,6 +125,9 @@ export const LandingPage = () => {
         } else {
           navigate("/admin");
         }
+      } else if (u.role === "customer") {
+        const defaultSlug = companies[0]?.slug || "technova";
+        navigate(`/s/${defaultSlug}/my-complaints`);
       }
     } else {
       setError(result.error || "Authentication failed");
@@ -138,6 +141,9 @@ export const LandingPage = () => {
       const slug = user?.company?.slug;
       if (slug) navigate(`/portal/${slug}`);
       else navigate("/admin");
+    } else if (currentRole === "customer") {
+      const defaultSlug = companies[0]?.slug || "technova";
+      navigate(`/s/${defaultSlug}/my-complaints`);
     }
   };
 
@@ -231,9 +237,15 @@ export const LandingPage = () => {
                   </span>
                 </div>
 
-                <button className="btn btn-primary btn-sm" onClick={handleGoToPanel}>
-                  Open Dashboard <ArrowRight size={14} />
-                </button>
+                {currentRole === "customer" ? (
+                  <button className="btn btn-primary btn-sm" onClick={handleGoToPanel}>
+                    <FileText size={14} /> My Complaints
+                  </button>
+                ) : (
+                  <button className="btn btn-primary btn-sm" onClick={handleGoToPanel}>
+                    Open Dashboard <ArrowRight size={14} />
+                  </button>
+                )}
 
                 <button className="btn btn-outline btn-sm" onClick={logoutUser}>
                   Sign Out
@@ -291,12 +303,22 @@ export const LandingPage = () => {
                   <span style={{ fontWeight: 600, textTransform: "uppercase", fontSize: "0.72rem", letterSpacing: "0.08em" }}>
                     Quick Links:
                   </span>
-                  <Link to="/s/technova" className="masthead-tag-btn" style={{ textDecoration: "none" }}>
-                    TechNova Help Desk
-                  </Link>
-                  <Link to="/s/quickcart" className="masthead-tag-btn" style={{ textDecoration: "none" }}>
-                    QuickCart Help Desk
-                  </Link>
+                  {companies && companies.length > 0 ? (
+                    companies.slice(0, 3).map((comp) => (
+                      <Link key={comp.slug} to={`/s/${comp.slug}`} className="masthead-tag-btn" style={{ textDecoration: "none" }}>
+                        {comp.name} Help Desk
+                      </Link>
+                    ))
+                  ) : (
+                    <>
+                      <Link to="/s/technova" className="masthead-tag-btn" style={{ textDecoration: "none" }}>
+                        TechNova Help Desk
+                      </Link>
+                      <Link to="/s/quickcart" className="masthead-tag-btn" style={{ textDecoration: "none" }}>
+                        QuickCart Help Desk
+                      </Link>
+                    </>
+                  )}
                   <button
                     type="button"
                     className="masthead-tag-btn"
@@ -499,19 +521,32 @@ export const LandingPage = () => {
                       >
                         Open Help Center <ExternalLink size={14} />
                       </Link>
-                      <button
-                        onClick={() => {
-                          if (isAuthenticated && (currentRole === "developer" || currentRole === "employee") && user?.company?.slug === c.slug) {
-                            navigate(`/portal/${c.slug}`);
-                          } else {
-                            setShowLogin(true);
-                          }
-                        }}
-                        className="btn btn-outline btn-sm"
-                        style={{ width: "100%" }}
-                      >
-                        <Briefcase size={14} /> Staff Portal Login
-                      </button>
+
+                      {isAuthenticated && (currentRole === "developer" || currentRole === "employee") && user?.company?.slug === c.slug ? (
+                        <Link
+                          to={`/portal/${c.slug}`}
+                          className="btn btn-outline btn-sm"
+                          style={{ width: "100%", textAlign: "center", textDecoration: "none" }}
+                        >
+                          <Briefcase size={14} /> Open Staff Portal
+                        </Link>
+                      ) : isAuthenticated && currentRole === "superadmin" ? (
+                        <Link
+                          to={`/portal/${c.slug}`}
+                          className="btn btn-outline btn-sm"
+                          style={{ width: "100%", textAlign: "center", textDecoration: "none" }}
+                        >
+                          <Briefcase size={14} /> Inspect Company Portal
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/s/${c.slug}/complaint`}
+                          className="btn btn-outline btn-sm"
+                          style={{ width: "100%", textAlign: "center", textDecoration: "none" }}
+                        >
+                          <FileText size={14} /> File Grievance / Ticket
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
@@ -718,36 +753,52 @@ export const LandingPage = () => {
 
           <div className="panel">
             <div className="panel-header">
-              <h3 className="panel-title">System Status & Security</h3>
+              <div>
+                <h3 className="panel-title">SLA Standards & Commitments</h3>
+                <p className="panel-subtitle">Guaranteed resolution targets for fast and fair dispute handling</p>
+              </div>
             </div>
             <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <div style={{ padding: "1rem", background: "var(--bg-main)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)" }}>
-                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
-                  Database Connection
+                <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.6rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Target Resolution Windows</span>
+                  <span style={{ color: "var(--sage)", fontWeight: 700, fontSize: "0.72rem" }}>ACTIVE MONITORING</span>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-main)" }}>
-                  MongoDB Cloud
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--sage)", display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.3rem" }}>
-                  <CheckCircle size={14} /> Connected & Ready
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.6rem", textAlign: "center" }}>
+                  <div style={{ padding: "0.6rem 0.4rem", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)" }}>
+                    <div style={{ fontSize: "0.68rem", color: "var(--brick)", fontWeight: 700, letterSpacing: "0.06em" }}>CRITICAL</div>
+                    <div style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--text-main)", marginTop: "0.15rem" }}>&lt; 4h</div>
+                  </div>
+                  <div style={{ padding: "0.6rem 0.4rem", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)" }}>
+                    <div style={{ fontSize: "0.68rem", color: "var(--bronze)", fontWeight: 700, letterSpacing: "0.06em" }}>HIGH</div>
+                    <div style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--text-main)", marginTop: "0.15rem" }}>&lt; 12h</div>
+                  </div>
+                  <div style={{ padding: "0.6rem 0.4rem", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)" }}>
+                    <div style={{ fontSize: "0.68rem", color: "var(--sage)", fontWeight: 700, letterSpacing: "0.06em" }}>NORMAL</div>
+                    <div style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--text-main)", marginTop: "0.15rem" }}>&lt; 24h</div>
+                  </div>
                 </div>
               </div>
 
               <div style={{ padding: "1rem", background: "var(--bg-main)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)" }}>
                 <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
-                  Security & Sign-In
+                  Automated Grievance Dispatch
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-main)" }}>
-                  JWT & Google Authentication
+                  Instant Lead Engineer Notification
                 </div>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
-                  Secure 24-hour sessions
+                <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginTop: "0.25rem", lineHeight: 1.5 }}>
+                  Every new ticket instantly routes an automated email alert to the company's assigned developer to trigger immediate resolution.
                 </div>
               </div>
 
-              <div className="emergency-box">
-                <strong>Urgent Priority Alerts</strong>
-                <p>Critical issues approaching their target response time are highlighted at the top of agent queues so nothing gets forgotten.</p>
+              <div className="emergency-box" style={{ borderColor: "var(--border-color)", background: "var(--bg-subtle)" }}>
+                <strong style={{ color: "var(--text-main)", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <Sparkles size={15} style={{ color: "var(--bronze)" }} /> 100% Customer Satisfaction Guarantee
+                </strong>
+                <p style={{ margin: "0.35rem 0 0 0", fontSize: "0.82rem", color: "var(--text-body)", lineHeight: 1.5 }}>
+                  Every resolved ticket includes verified customer ratings and feedback history, ensuring constant quality across all company support portals.
+                </p>
               </div>
             </div>
           </div>

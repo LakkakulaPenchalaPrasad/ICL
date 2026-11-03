@@ -56,11 +56,11 @@ export default function App() {
             <Route path="developers" element={<DeveloperManagement />} />
           </Route>
 
-          {/* ─── Company Portal (Developer + Employees) ─── */}
+          {/* ─── Company Portal (Developer + Employees + Super Admin) ─── */}
           <Route
             path="/portal/:slug"
             element={
-              <ProtectedRoute roles={["developer", "employee"]}>
+              <ProtectedRoute roles={["developer", "employee", "superadmin"]}>
                 <PortalLayout />
               </ProtectedRoute>
             }
