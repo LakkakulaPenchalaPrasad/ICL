@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Building2, Users, TicketCheck, TrendingUp, AlertTriangle } from "lucide-react";
+import { Building2, Users, TicketCheck, TrendingUp, ExternalLink, ArrowRight } from "lucide-react";
 
 export const AdminDashboard = () => {
   const { apiFetch } = useAuth();
@@ -75,31 +76,85 @@ export const AdminDashboard = () => {
       </div>
 
       {/* Company Breakdown */}
-      {data.companyAgg && data.companyAgg.length > 0 && (
-        <div className="dashboard-section">
-          <h2 className="section-title">TICKETS BY COMPANY</h2>
-          <div className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th>Slug</th>
-                  <th>Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.companyAgg.map((c) => (
+      <div className="dashboard-section">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+          <h2 className="section-title" style={{ margin: 0 }}>
+            COMPANIES ON PLATFORM ({data.companyAgg?.length || 0})
+          </h2>
+          <Link
+            to="/admin/companies"
+            className="btn-ghost"
+            style={{ fontSize: "0.85rem", display: "inline-flex", alignItems: "center", gap: "0.4rem", textDecoration: "none" }}
+          >
+            Manage All Companies <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="data-table-container">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Slug</th>
+                <th>Industry</th>
+                <th>Developer</th>
+                <th>Employees</th>
+                <th>Tickets</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.companyAgg && data.companyAgg.length > 0 ? (
+                data.companyAgg.map((c) => (
                   <tr key={c.slug}>
                     <td className="font-medium">{c.name}</td>
                     <td><code className="slug-badge">/s/{c.slug}</code></td>
-                    <td>{c.count}</td>
+                    <td>{c.industry || "General"}</td>
+                    <td>{c.developer || "Not assigned"}</td>
+                    <td>{c.employeeCount ?? 0}</td>
+                    <td>
+                      <span style={{ fontWeight: 700 }}>{c.ticketCount ?? c.count ?? 0}</span>
+                    </td>
+                    <td>
+                      <span className={`badge status-${(c.status || "active").toLowerCase()}`}>
+                        {c.status || "active"}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <a
+                          href={`/s/${c.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn-sm btn-ghost"
+                          style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                          title="Open public service page"
+                        >
+                          <ExternalLink size={13} /> Service
+                        </a>
+                        <Link
+                          to={`/portal/${c.slug}`}
+                          className="btn-sm btn-outline"
+                          style={{ textDecoration: "none" }}
+                          title="Open internal company portal"
+                        >
+                          Portal
+                        </Link>
+                      </div>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "2rem" }}>
+                    No companies registered yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* Recent Tickets */}
       {data.recentTickets && data.recentTickets.length > 0 && (

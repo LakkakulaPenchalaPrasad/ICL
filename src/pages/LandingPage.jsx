@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -23,8 +23,35 @@ import {
   AlertTriangle
 } from "lucide-react";
 
+const DEFAULT_COMPANIES = [
+  {
+    name: "TechNova Solutions",
+    slug: "technova",
+    industry: "Technology",
+    ticketPrefix: "TNS",
+    status: "active",
+    branding: {
+      primaryColor: "#25221f",
+      welcomeMessage: "Welcome to TechNova Support",
+      tagline: "Software and cloud support. Read helpful FAQs, report technical bugs, manage subscriptions, or submit an urgent ticket to support engineers."
+    }
+  },
+  {
+    name: "QuickCart E-Commerce",
+    slug: "quickcart",
+    industry: "E-Commerce",
+    ticketPrefix: "QC",
+    status: "active",
+    branding: {
+      primaryColor: "#8c6a46",
+      welcomeMessage: "Welcome to QuickCart Support",
+      tagline: "Customer shopping assistance. Track package deliveries, request refunds, report missing items, and review order satisfaction."
+    }
+  }
+];
+
 export const LandingPage = () => {
-  const { isAuthenticated, currentRole, user, loginUser, logoutUser, theme, toggleTheme } = useAuth();
+  const { isAuthenticated, currentRole, user, loginUser, logoutUser, theme, toggleTheme, apiFetch } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,6 +61,45 @@ export const LandingPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [docketSearch, setDocketSearch] = useState("");
+  const [companies, setCompanies] = useState(DEFAULT_COMPANIES);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCompanies = async () => {
+      try {
+        // Try public active companies list
+        const res = await fetch("/api/companies");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0 && isMounted) {
+            setCompanies(data);
+            return;
+          }
+        }
+
+        // If user is superadmin and server hasn't been restarted, fallback to /api/admin/companies
+        if (isAuthenticated && currentRole === "superadmin") {
+          const adminRes = await apiFetch("/api/admin/companies");
+          if (adminRes.ok) {
+            const adminData = await adminRes.json();
+            if (Array.isArray(adminData) && adminData.length > 0 && isMounted) {
+              setCompanies(adminData);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to load dynamic companies, using default fallback:", err);
+      } finally {
+        if (isMounted) setLoadingCompanies(false);
+      }
+    };
+    fetchCompanies();
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, currentRole, apiFetch]);
 
   const params = new URLSearchParams(location.search);
   const redirectUrl = params.get("redirect");
@@ -79,13 +145,20 @@ export const LandingPage = () => {
     e.preventDefault();
     if (!docketSearch.trim()) return;
     const clean = docketSearch.trim().toUpperCase();
-    if (clean.startsWith("TNS")) {
+    const matched = companies.find(
+      (c) =>
+        (c.ticketPrefix && clean.startsWith(c.ticketPrefix)) ||
+        clean.toLowerCase().includes(c.slug.toLowerCase())
+    );
+    if (matched) {
+      navigate(`/s/${matched.slug}/track/${encodeURIComponent(clean)}`);
+    } else if (clean.startsWith("TNS")) {
       navigate(`/s/technova/track/${encodeURIComponent(clean)}`);
     } else if (clean.startsWith("QC")) {
       navigate(`/s/quickcart/track/${encodeURIComponent(clean)}`);
     } else {
-      // Default to technova or route to search
-      navigate(`/s/technova/track/${encodeURIComponent(clean)}`);
+      const fallback = companies[0]?.slug || "technova";
+      navigate(`/s/${fallback}/track/${encodeURIComponent(clean)}`);
     }
   };
 
@@ -361,135 +434,94 @@ export const LandingPage = () => {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "1.75rem" }}>
-            {/* TechNova Card */}
-            <div className="card" style={{ padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        width: "42px",
-                        height: "42px",
-                        background: "var(--primary)",
-                        color: "var(--bg-card)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 700,
-                        fontSize: "1.1rem",
-                        borderRadius: "var(--radius-sm)"
-                      }}
-                    >
-                      TN
-                    </div>
+            {companies && companies.length > 0 ? (
+              companies.map((c) => {
+                const initials = (c.name || "Company")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+                const primaryColor = c.branding?.primaryColor || "var(--primary)";
+                const prefix = c.ticketPrefix || c.slug?.toUpperCase() || "TKT";
+
+                return (
+                  <div
+                    key={c.slug}
+                    className="card"
+                    style={{ padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
+                  >
                     <div>
-                      <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.15rem" }}>
-                        TechNova Solutions
-                      </h3>
-                      <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                        Tech & Cloud Software • Prefix: TNS
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                          <div
+                            style={{
+                              width: "42px",
+                              height: "42px",
+                              background: primaryColor,
+                              color: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontFamily: "var(--font-display)",
+                              fontWeight: 700,
+                              fontSize: "1.1rem",
+                              borderRadius: "var(--radius-sm)"
+                            }}
+                          >
+                            {initials}
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.15rem" }}>
+                              {c.name}
+                            </h3>
+                            <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
+                              {c.industry || "General"} • Prefix: {prefix}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="badge badge-primary" style={{ background: "var(--sage-light)", color: "var(--sage)" }}>
+                          {c.status === "active" ? "Active" : c.status}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                        {c.branding?.tagline ||
+                          c.branding?.welcomeMessage ||
+                          "Official customer support desk. File complaints, browse FAQs, track ticket progress, and check resolution times."}
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderTop: "1px solid var(--border-color)", paddingTop: "1.25rem" }}>
+                      <Link
+                        to={`/s/${c.slug}`}
+                        className="btn btn-primary btn-sm"
+                        style={{ textDecoration: "none", width: "100%", textAlign: "center" }}
+                      >
+                        Open Help Center <ExternalLink size={14} />
+                      </Link>
+                      <button
+                        onClick={() => {
+                          if (isAuthenticated && (currentRole === "developer" || currentRole === "employee") && user?.company?.slug === c.slug) {
+                            navigate(`/portal/${c.slug}`);
+                          } else {
+                            setShowLogin(true);
+                          }
+                        }}
+                        className="btn btn-outline btn-sm"
+                        style={{ width: "100%" }}
+                      >
+                        <Briefcase size={14} /> Staff Portal Login
+                      </button>
                     </div>
                   </div>
-                  <span className="badge badge-primary" style={{ background: "var(--sage-light)", color: "var(--sage)" }}>
-                    Active
-                  </span>
-                </div>
-
-                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
-                  Software and cloud support. Read helpful FAQs, report technical bugs, manage subscriptions, or submit an urgent ticket to support engineers.
-                </p>
+                );
+              })
+            ) : (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "3rem", color: "var(--text-muted)" }}>
+                No active companies found.
               </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderTop: "1px solid var(--border-color)", paddingTop: "1.25rem" }}>
-                <Link
-                  to="/s/technova"
-                  className="btn btn-primary btn-sm"
-                  style={{ textDecoration: "none", width: "100%" }}
-                >
-                  Open Help Center <ExternalLink size={14} />
-                </Link>
-                <button
-                  onClick={() => {
-                    if (isAuthenticated && (currentRole === "developer" || currentRole === "employee") && user?.company?.slug === "technova") {
-                      navigate("/portal/technova");
-                    } else {
-                      setShowLogin(true);
-                    }
-                  }}
-                  className="btn btn-outline btn-sm"
-                  style={{ width: "100%" }}
-                >
-                  <Briefcase size={14} /> Staff Portal Login
-                </button>
-              </div>
-            </div>
-
-            {/* QuickCart Card */}
-            <div className="card" style={{ padding: "2rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        width: "42px",
-                        height: "42px",
-                        background: "var(--sage)",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 700,
-                        fontSize: "1.1rem",
-                        borderRadius: "var(--radius-sm)"
-                      }}
-                    >
-                      QC
-                    </div>
-                    <div>
-                      <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.15rem" }}>
-                        QuickCart E-Commerce
-                      </h3>
-                      <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                        Online Shopping & Orders • Prefix: QC
-                      </span>
-                    </div>
-                  </div>
-                  <span className="badge badge-primary" style={{ background: "var(--sage-light)", color: "var(--sage)" }}>
-                    Active
-                  </span>
-                </div>
-
-                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
-                  Customer shopping assistance. Track package deliveries, request refunds, report missing items, and review order satisfaction.
-                </p>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", borderTop: "1px solid var(--border-color)", paddingTop: "1.25rem" }}>
-                <Link
-                  to="/s/quickcart"
-                  className="btn btn-primary btn-sm"
-                  style={{ textDecoration: "none", width: "100%" }}
-                >
-                  Open Help Center <ExternalLink size={14} />
-                </Link>
-                <button
-                  onClick={() => {
-                    if (isAuthenticated && (currentRole === "developer" || currentRole === "employee") && user?.company?.slug === "quickcart") {
-                      navigate("/portal/quickcart");
-                    } else {
-                      setShowLogin(true);
-                    }
-                  }}
-                  className="btn btn-outline btn-sm"
-                  style={{ width: "100%" }}
-                >
-                  <Briefcase size={14} /> Staff Portal Login
-                </button>
-              </div>
-            </div>
+            )}
 
             {/* Super Admin Control Room */}
             <div

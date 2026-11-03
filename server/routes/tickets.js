@@ -124,6 +124,30 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
       ],
     });
 
+    // Trigger EmailJS notification to company developer (or superadmin fallback) in background
+    (async () => {
+      try {
+        const { User } = await import('../models/User.js');
+        const { sendTicketNotificationToDeveloper } = await import('../utils/email.js');
+
+        let developer = null;
+        if (company.developer) {
+          developer = await User.findById(company.developer).select('name email role');
+        }
+
+        // If no developer is assigned to this company, fallback to platform Super Admin
+        if (!developer || !developer.email) {
+          developer = await User.findOne({ role: 'superadmin' }).select('name email role');
+        }
+
+        if (developer) {
+          await sendTicketNotificationToDeveloper({ company, developer, ticket });
+        }
+      } catch (mailErr) {
+        console.error('Email alert dispatch error:', mailErr.message);
+      }
+    })();
+
     res.status(201).json(ticket);
   } catch (err) {
     console.error('Create ticket error:', err);
