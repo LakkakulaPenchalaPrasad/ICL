@@ -9,7 +9,7 @@
   "scripts": {
     "start": "concurrently -n \"server,client\" -c \"cyan,magenta\" \"npm run server\" \"npm run dev\"",
     "dev": "vite",
-    "server": "node server/index.js",
+    "server": "node --watch server/index.js",
     "reset-db": "node server/resetDb.js",
     "build": "vite build",
     "preview": "vite preview"

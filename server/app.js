@@ -59,6 +59,29 @@ app.use('/api/auth', authRoutes);
 // Super Admin panel
 app.use('/api/admin', adminRoutes);
 
+// Public active companies list (for platform directory & landing page)
+app.get('/api/companies', async (req, res) => {
+  try {
+    const { Company } = await import('./models/Company.js');
+    const { Ticket } = await import('./models/Ticket.js');
+    const companies = await Company.find({ status: 'active' })
+      .select('name slug logo industry branding ticketPrefix status')
+      .sort({ createdAt: -1 });
+
+    const enriched = await Promise.all(
+      companies.map(async (c) => {
+        const ticketCount = await Ticket.countDocuments({ company: c._id });
+        return { ...c.toObject(), ticketCount };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err) {
+    console.error('Public companies fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch companies' });
+  }
+});
+
 // Company-scoped routes (public info, dashboard, branding, employees)
 app.use('/api/companies/:slug', companyRoutes);
 

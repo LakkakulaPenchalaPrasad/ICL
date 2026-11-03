@@ -27,21 +27,31 @@ router.get('/dashboard', async (req, res) => {
     const byStatus = {};
     statusAgg.forEach((s) => (byStatus[s._id] = s.count));
 
-    // Tickets per company
-    const companyAgg = await Ticket.aggregate([
-      { $group: { _id: '$company', count: { $sum: 1 } } },
-      {
-        $lookup: {
-          from: 'companies',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'companyInfo',
-        },
-      },
-      { $unwind: '$companyInfo' },
-      { $project: { name: '$companyInfo.name', slug: '$companyInfo.slug', count: 1 } },
-      { $sort: { count: -1 } },
-    ]);
+    // All companies on platform with live ticket and employee counts
+    const allCompanies = await Company.find()
+      .populate('developer', 'name email status')
+      .sort({ createdAt: -1 });
+
+    const companyAgg = await Promise.all(
+      allCompanies.map(async (company) => {
+        const [ticketCount, employeeCount] = await Promise.all([
+          Ticket.countDocuments({ company: company._id }),
+          User.countDocuments({ company: company._id, role: 'employee', status: 'active' }),
+        ]);
+        return {
+          _id: company._id,
+          name: company.name,
+          slug: company.slug,
+          industry: company.industry,
+          status: company.status,
+          ticketPrefix: company.ticketPrefix,
+          developer: company.developer ? company.developer.name : 'Not assigned',
+          employeeCount,
+          count: ticketCount,
+          ticketCount,
+        };
+      })
+    );
 
     // Recent tickets
     const recentTickets = await Ticket.find()
