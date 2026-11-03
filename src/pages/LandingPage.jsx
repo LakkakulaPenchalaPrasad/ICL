@@ -186,9 +186,9 @@ export const LandingPage = () => {
             <a href="#track" className="nav-link">
               Track Ticket
             </a>
-            <Link to="/s/technova" className="nav-link">
-              Help Center
-            </Link>
+            <a href="#tenants" className="nav-link">
+              Help Centers
+            </a>
           </nav>
 
           <div className="nav-actions">
@@ -422,15 +422,14 @@ export const LandingPage = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                if (currentRole === "superadmin") navigate("/admin/companies");
-                else setShowLogin(true);
-              }}
-              className="btn btn-outline btn-sm"
-            >
-              + Add New Company
-            </button>
+            {isAuthenticated && currentRole === "superadmin" && (
+              <button
+                onClick={() => navigate("/admin/companies")}
+                className="btn btn-outline btn-sm"
+              >
+                + Add New Company
+              </button>
+            )}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "1.75rem" }}>
@@ -523,68 +522,64 @@ export const LandingPage = () => {
               </div>
             )}
 
-            {/* Super Admin Control Room */}
-            <div
-              className="card"
-              style={{
-                padding: "2rem",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                background: "linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%)",
-                borderColor: "var(--border-dark)"
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div
-                      style={{
-                        width: "42px",
-                        height: "42px",
-                        background: "var(--bronze)",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: "var(--radius-sm)"
-                      }}
-                    >
-                      <ShieldCheck size={22} />
+            {/* Super Admin Control Room - Protected & Restricted to Super Admin */}
+            {isAuthenticated && currentRole === "superadmin" && (
+              <div
+                className="card"
+                style={{
+                  padding: "2rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  background: "linear-gradient(180deg, var(--bg-card) 0%, var(--bg-subtle) 100%)",
+                  borderColor: "var(--border-dark)"
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <div
+                        style={{
+                          width: "42px",
+                          height: "42px",
+                          background: "var(--bronze)",
+                          color: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "var(--radius-sm)"
+                        }}
+                      >
+                        <ShieldCheck size={22} />
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.15rem" }}>
+                          Super Admin Panel
+                        </h3>
+                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
+                          Platform Administration
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.15rem" }}>
-                        Super Admin Panel
-                      </h3>
-                      <span style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                        Platform Administration
-                      </span>
-                    </div>
+                    <span className="badge badge-primary">Admin</span>
                   </div>
-                  <span className="badge badge-primary">Admin</span>
+
+                  <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                    Complete system control: register new companies, manage company lead logins, check overall ticket volume, and view response times.
+                  </p>
                 </div>
 
-                <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", lineHeight: 1.6, marginBottom: "1.5rem" }}>
-                  Complete system control: register new companies, manage company lead logins, check overall ticket volume, and view response times.
-                </p>
+                <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.25rem" }}>
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="btn btn-primary btn-sm"
+                    style={{ width: "100%" }}
+                  >
+                    <Lock size={14} /> Open Super Admin Panel
+                  </button>
+                </div>
               </div>
-
-              <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.25rem" }}>
-                <button
-                  onClick={() => {
-                    if (currentRole === "superadmin") {
-                      navigate("/admin");
-                    } else {
-                      setShowLogin(true);
-                    }
-                  }}
-                  className="btn btn-primary btn-sm"
-                  style={{ width: "100%" }}
-                >
-                  <Lock size={14} /> Open Super Admin Panel
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
