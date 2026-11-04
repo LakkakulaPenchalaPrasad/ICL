@@ -7,12 +7,25 @@
  * 4. Customer query resolved notifications with CSAT inspection links
  */
 
+const resolveAppUrl = () => {
+  if (process.env.APP_URL && !process.env.APP_URL.includes('localhost')) {
+    return process.env.APP_URL.replace(/\/$/, '');
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return process.env.APP_URL || 'http://localhost:5173';
+};
+
 const getEmailConfig = () => ({
   serviceId: process.env.EMAILJS_SERVICE_ID,
   templateId: process.env.EMAILJS_TEMPLATE_ID,
   publicKey: process.env.EMAILJS_PUBLIC_KEY,
   privateKey: process.env.EMAILJS_PRIVATE_KEY,
-  appUrl: process.env.APP_URL || 'http://localhost:5173',
+  appUrl: resolveAppUrl(),
   overrideEmail: process.env.DEV_NOTIFICATION_OVERRIDE || null,
 });
 
