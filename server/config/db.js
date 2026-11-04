@@ -18,7 +18,7 @@ export async function connectToDatabase() {
     const opts = {
       bufferCommands: false, // Prevents queries from hanging indefinitely on network hiccups
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
     };
     cachedPromise = mongoose.connect(MONGODB_URI, opts).then((m) => {
