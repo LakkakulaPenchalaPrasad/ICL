@@ -56,6 +56,23 @@ export const AdminLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
+          {sidebarOpen ? (
+            <div className="sidebar-user-card">
+              <div className="user-avatar-small">
+                {user?.name?.[0]?.toUpperCase() || "A"}
+              </div>
+              <div className="user-details-col">
+                <span className="user-name">{user?.name}</span>
+                <span className="user-role-badge">{user?.role}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="sidebar-user-icon-only" title={`${user?.name} (${user?.role})`}>
+              <div className="user-avatar-small">
+                {user?.name?.[0]?.toUpperCase() || "A"}
+              </div>
+            </div>
+          )}
           <button className="sidebar-nav-item" onClick={toggleTheme}>
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             {sidebarOpen && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}

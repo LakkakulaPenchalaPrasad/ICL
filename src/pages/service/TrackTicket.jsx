@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   Clock,
   CheckCircle,
@@ -16,6 +17,7 @@ import {
 export const TrackTicket = () => {
   const { slug, ticketId } = useParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated, currentRole } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -103,20 +105,55 @@ export const TrackTicket = () => {
             justifyContent: "space-between"
           }}
         >
-          <Link
-            to={`/s/${slug}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              textDecoration: "none",
-              color: "var(--text-main)",
-              fontSize: "0.9rem",
-              fontWeight: 600
-            }}
-          >
-            <ArrowLeft size={16} /> Back to Service Desk
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Link
+              to={
+                isAuthenticated && currentRole === "superadmin"
+                  ? "/admin"
+                  : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                  ? `/portal/${user?.company?.slug || slug}`
+                  : "/"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-main)",
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                fontWeight: 600
+              }}
+              title="Return to Dashboard / Platform"
+            >
+              <ArrowLeft size={14} />
+              {isAuthenticated && currentRole === "superadmin"
+                ? "Admin Dashboard"
+                : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                ? "Staff Portal"
+                : "Dashboard"}
+            </Link>
+
+            <div style={{ width: "1px", height: "20px", backgroundColor: "var(--border-color)" }} />
+
+            <Link
+              to={`/s/${slug}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                color: "var(--text-main)",
+                fontSize: "0.9rem",
+                fontWeight: 600
+              }}
+            >
+              Back to Service Desk
+            </Link>
+          </div>
 
           <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Public Tracking Protocol

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
-  LayoutDashboard, TicketCheck, Users, Palette, LogOut, Moon, Sun, Menu, X, ChevronRight,
+  LayoutDashboard, TicketCheck, Users, Palette, LogOut, Moon, Sun, Menu, X, ChevronRight, ArrowLeft, ExternalLink,
 } from "lucide-react";
 
 export const PortalLayout = () => {
@@ -65,14 +65,23 @@ export const PortalLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sidebar-user-info">
-            {sidebarOpen && (
-              <>
+          {sidebarOpen ? (
+            <div className="sidebar-user-card">
+              <div className="user-avatar-small">
+                {user?.name?.[0]?.toUpperCase() || "U"}
+              </div>
+              <div className="user-details-col">
                 <span className="user-name">{user?.name}</span>
                 <span className="user-role-badge">{currentRole}</span>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div className="sidebar-user-icon-only" title={`${user?.name} (${currentRole})`}>
+              <div className="user-avatar-small">
+                {user?.name?.[0]?.toUpperCase() || "U"}
+              </div>
+            </div>
+          )}
           <button className="sidebar-nav-item" onClick={toggleTheme}>
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             {sidebarOpen && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
@@ -87,11 +96,34 @@ export const PortalLayout = () => {
       {/* Main Content */}
       <div className="admin-main">
         <header className="admin-topbar">
-          <div className="topbar-left">
-            <h2 className="topbar-title">{slug}</h2>
-            <span className="topbar-subtitle">Company Portal</span>
+          <div className="topbar-left" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
+              onClick={() => navigate(currentRole === "superadmin" ? "/admin" : "/")}
+              className="btn-sm btn-outline"
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.82rem" }}
+              title="Return to Dashboard"
+            >
+              <ArrowLeft size={14} /> {currentRole === "superadmin" ? "Admin Panel" : "Platform Home"}
+            </button>
+
+            <div style={{ width: "1px", height: "22px", backgroundColor: "var(--border-color)" }} />
+
+            <div>
+              <h2 className="topbar-title">{slug}</h2>
+              <span className="topbar-subtitle">Company Portal</span>
+            </div>
           </div>
-          <div className="topbar-right">
+          <div className="topbar-right" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <a
+              href={`/s/${slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-sm btn-ghost"
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", textDecoration: "none", fontSize: "0.82rem" }}
+              title="Open public service desk"
+            >
+              <ExternalLink size={13} /> View Service Desk
+            </a>
             <div className="topbar-user">
               <span className="user-name">{user?.name}</span>
               <span className="user-role">{currentRole}</span>

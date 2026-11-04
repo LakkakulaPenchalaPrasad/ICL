@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   HelpCircle,
   ArrowRight,
+  ArrowLeft,
   Sun,
   Moon,
   LogIn,
@@ -22,7 +23,7 @@ import {
 export const ServicePage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated, theme, toggleTheme, loginWithGoogle, logoutUser } = useAuth();
+  const { user, isAuthenticated, currentRole, theme, toggleTheme, loginWithGoogle, logoutUser } = useAuth();
 
   const [company, setCompany] = useState(null);
   const [faqs, setFaqs] = useState([]);
@@ -130,6 +131,7 @@ export const ServicePage = () => {
   }
 
   const branding = company?.branding || {};
+  const primaryColor = branding.primaryColor || "var(--primary)";
   const accentColor = branding.accentColor || "var(--bronze)";
 
   return (
@@ -154,42 +156,80 @@ export const ServicePage = () => {
             justifyContent: "space-between"
           }}
         >
-          {/* Brand */}
-          <Link to={`/s/${slug}`} style={{ display: "flex", alignItems: "center", gap: "0.75rem", textDecoration: "none" }}>
-            {company?.logo ? (
-              <img
-                src={company.logo}
-                alt={company.name}
-                style={{ width: "36px", height: "36px", objectFit: "contain", borderRadius: "var(--radius-sm)" }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  background: accentColor,
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  fontFamily: "var(--font-display)",
-                  borderRadius: "var(--radius-sm)"
-                }}
-              >
-                {company?.name?.slice(0, 2).toUpperCase() || "RS"}
+          {/* Brand & Back Navigation */}
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Link
+              to={
+                isAuthenticated && currentRole === "superadmin"
+                  ? "/admin"
+                  : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                  ? `/portal/${user?.company?.slug || slug}`
+                  : "/"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.45rem",
+                padding: "0.42rem 0.85rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-main)",
+                color: "var(--text-main)",
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                transition: "all var(--transition-fast)",
+                whiteSpace: "nowrap"
+              }}
+              title="Return to Dashboard / Platform"
+            >
+              <ArrowLeft size={15} />
+              {isAuthenticated && currentRole === "superadmin"
+                ? "Admin Dashboard"
+                : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                ? "Staff Portal"
+                : "Back to Platform"}
+            </Link>
+
+            <div style={{ width: "1px", height: "24px", backgroundColor: "var(--border-color)" }} />
+
+            {/* Brand */}
+            <Link to={`/s/${slug}`} style={{ display: "flex", alignItems: "center", gap: "0.75rem", textDecoration: "none" }}>
+              {company?.logo ? (
+                <img
+                  src={company.logo}
+                  alt={company.name}
+                  style={{ width: "36px", height: "36px", objectFit: "contain", borderRadius: "var(--radius-sm)" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    background: accentColor,
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    fontFamily: "var(--font-display)",
+                    borderRadius: "var(--radius-sm)"
+                  }}
+                >
+                  {company?.name?.slice(0, 2).toUpperCase() || "RS"}
+                </div>
+              )}
+              <div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: "1.05rem", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.04em" }}>
+                  {company?.name}
+                </div>
+                <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+                  Support & Redressal Center
+                </div>
               </div>
-            )}
-            <div>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: "1.05rem", fontWeight: 700, color: "var(--text-main)", letterSpacing: "0.04em" }}>
-                {company?.name}
-              </div>
-              <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
-                Support & Redressal Center
-              </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
 
           {/* Right Navigation */}
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -285,8 +325,8 @@ export const ServicePage = () => {
                   alignItems: "center",
                   gap: "0.5rem",
                   padding: "0.5rem 1.1rem",
-                  background: "var(--primary)",
-                  color: "var(--bg-card)",
+                  background: primaryColor,
+                  color: "#fff",
                   border: "none",
                   borderRadius: "var(--radius-sm)",
                   fontSize: "0.85rem",
@@ -386,8 +426,8 @@ export const ServicePage = () => {
                   width: "40px",
                   height: "40px",
                   borderRadius: "var(--radius-sm)",
-                  background: "var(--primary-light)",
-                  color: "var(--primary)",
+                  background: accentColor,
+                  color: "#fff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -402,7 +442,7 @@ export const ServicePage = () => {
               <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1rem", flex: 1 }}>
                 Submit a new dispute or incident. Auto-assigned with SLA tracking.
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", fontWeight: 600, color: "var(--primary)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", fontWeight: 600, color: accentColor }}>
                 Start Intake Form <ArrowRight size={14} />
               </div>
             </Link>
