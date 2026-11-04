@@ -7,6 +7,8 @@ import {
   sendTicketFallbackToDeveloperNotification,
   sendTicketRedirectedNotification,
   sendTicketResolvedNotificationToCustomer,
+  sendTicketCreatedConfirmationToCustomer,
+  sendTicketProgressUpdateNotificationToCustomer,
 } from '../utils/email.js';
 
 const router = express.Router({ mergeParams: true });
@@ -334,6 +336,15 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
           });
         }
       }
+
+      // Send Complaint Lodged Confirmation directly to customer with their Ticket ID and live tracking link
+      if (ticket.customer?.email) {
+        console.log(`[Customer Notice] Dispatching ticket creation confirmation to ${ticket.customer.email} (ID: ${ticket.ticketId})`);
+        await sendTicketCreatedConfirmationToCustomer({
+          company,
+          ticket,
+        });
+      }
     } catch (mailErr) {
       console.error('Email alert dispatch error:', mailErr.message);
     }
@@ -557,6 +568,16 @@ router.put('/:ticketId', authenticate, authorize('developer', 'employee', 'super
           resolvedBy: req.user.name,
           resolutionNote: changes.join('. '),
         });
+      } else if (changes.length > 0 && ticket.customer?.email) {
+        // 3. Ongoing Progress Update Notice to Customer (e.g., In Progress, Escalated, Priority or SLA adjustment)
+        console.log(`[Progress Alert] Ticket ${ticket.ticketId} progress updated (${ticket.status}). Dispatching notice to customer ${ticket.customer.email}`);
+        await sendTicketProgressUpdateNotificationToCustomer({
+          company,
+          ticket,
+          updatedBy: req.user.name,
+          updateNote: changes.join('. '),
+          newStatus: ticket.status,
+        });
       }
     } catch (postErr) {
       console.error('Post-update notification error:', postErr.message);
@@ -617,6 +638,21 @@ router.post('/:ticketId/messages', authenticate, async (req, res) => {
 
     await ticket.save();
 
+    // If staff sent a customer-visible reply, dispatch progress email notice to the customer
+    if (!internal && ['developer', 'employee', 'superadmin'].includes(req.user.role) && ticket.customer?.email) {
+      try {
+        await sendTicketProgressUpdateNotificationToCustomer({
+          company,
+          ticket,
+          updatedBy: req.user.name,
+          updateNote: `Staff update from ${req.user.name} (${req.user.role}): "${text.trim().slice(0, 180)}${text.trim().length > 180 ? '...' : ''}"`,
+          newStatus: ticket.status,
+        });
+      } catch (mailErr) {
+        console.error('Customer message alert error:', mailErr.message);
+      }
+    }
+
     // Return the new message
     const newMessage = ticket.messages[ticket.messages.length - 1];
     res.status(201).json(newMessage);
@@ -652,6 +688,22 @@ router.post('/:ticketId/escalate', authenticate, authorize('developer', 'employe
     });
 
     await ticket.save();
+
+    // Notify customer that ticket urgency has been escalated
+    if (ticket.customer?.email) {
+      try {
+        await sendTicketProgressUpdateNotificationToCustomer({
+          company,
+          ticket,
+          updatedBy: req.user.name,
+          updateNote: `Urgency escalated to Critical by ${req.user.name}. Reason: ${reason || 'Escalated for immediate senior redressal.'}`,
+          newStatus: 'Escalated',
+        });
+      } catch (mailErr) {
+        console.error('Customer escalate alert error:', mailErr.message);
+      }
+    }
+
     res.json(ticket);
   } catch (err) {
     console.error('Escalate ticket error:', err);
