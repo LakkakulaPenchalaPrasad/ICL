@@ -26,7 +26,6 @@ const getEmailConfig = () => ({
   publicKey: process.env.EMAILJS_PUBLIC_KEY,
   privateKey: process.env.EMAILJS_PRIVATE_KEY,
   appUrl: resolveAppUrl(),
-  overrideEmail: process.env.DEV_NOTIFICATION_OVERRIDE || null,
 });
 
 async function dispatchEmailJS({ targetEmail, templateParams, logContext }) {
@@ -91,8 +90,8 @@ export async function sendTicketAssignedToEmployeeNotification({ company, employ
     return { success: false, reason: 'No employee email' };
   }
 
-  const { appUrl, overrideEmail } = getEmailConfig();
-  const targetEmail = overrideEmail || employee.email;
+  const { appUrl } = getEmailConfig();
+  const targetEmail = employee.email;
   const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
 
   const message = `A new ${ticket.category} complaint has been ${isAutoRouted ? 'auto-routed' : 'assigned'} to your department (${employee.department || 'Support'}) queue. Please review and respond within SLA targets.`;
@@ -131,8 +130,8 @@ export async function sendTicketFallbackToDeveloperNotification({ company, devel
     return { success: false, reason: 'No developer email' };
   }
 
-  const { appUrl, overrideEmail } = getEmailConfig();
-  const targetEmail = overrideEmail || developer.email;
+  const { appUrl } = getEmailConfig();
+  const targetEmail = developer.email;
   const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
 
   const message = reason || `A new grievance under category "${ticket.category}" was filed. No active department specialist was found for this category, so it has been routed to your Developer Triage Queue to solve directly or redirect to any staff member.`;
@@ -169,8 +168,8 @@ export async function sendTicketRedirectedNotification({ company, employee, deve
     return { success: false, reason: 'No employee email' };
   }
 
-  const { appUrl, overrideEmail } = getEmailConfig();
-  const targetEmail = overrideEmail || employee.email;
+  const { appUrl } = getEmailConfig();
+  const targetEmail = employee.email;
   const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
 
   const message = `Lead Developer ${developer?.name || 'Lead Admin'} has redirected grievance #${ticket.ticketId} ("${ticket.subject}") to your attention for resolution.`;
@@ -209,8 +208,9 @@ export async function sendTicketResolvedNotificationToCustomer({ company, ticket
     return { success: false, reason: 'No customer email' };
   }
 
-  const { appUrl, overrideEmail } = getEmailConfig();
-  const targetEmail = overrideEmail || ticket.customer.email;
+  const { appUrl } = getEmailConfig();
+  // Delivered directly to the customer's actual registered email address
+  const targetEmail = ticket.customer.email;
   const trackerLink = `${appUrl}/s/${company.slug}/track/${ticket.ticketId}`;
 
   const message = resolutionNote || `Great news! Your grievance regarding "${ticket.subject}" has been marked as resolved by ${resolvedBy || company.name + ' Support Team'}. You can inspect the audit timeline and rate your resolution satisfaction via the tracking link below.`;
@@ -218,13 +218,17 @@ export async function sendTicketResolvedNotificationToCustomer({ company, ticket
   const templateParams = {
     to_name: ticket.customer.name || 'Valued Customer',
     to_email: targetEmail,
+    email: targetEmail,
+    customer_email: targetEmail,
+    user_email: targetEmail,
+    recipient_email: targetEmail,
+    reply_to: targetEmail,
     company_name: company.name,
     ticket_id: ticket.ticketId,
     subject: `Your query has been resolved: ${ticket.ticketId} - ${company.name}`,
     category: ticket.category || 'General Support',
     priority: ticket.priority || 'Medium',
     customer_name: ticket.customer.name || 'Customer',
-    customer_email: ticket.customer.email,
     tracking_link: trackerLink,
     portal_link: trackerLink,
     message,

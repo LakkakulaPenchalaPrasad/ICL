@@ -301,44 +301,42 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
       timeline: initialTimeline,
     });
 
-    // ─── Isolated Single-Recipient Email Notification ───
-    (async () => {
-      try {
-        if (matchedEmployee) {
-          // Department match found: send email ONLY to this particular employee
-          console.log(`[Auto-Routing] Routing ticket ${ticket.ticketId} to department employee ${matchedEmployee.name} (${matchedEmployee.department})`);
-          await sendTicketAssignedToEmployeeNotification({
-            company,
-            employee: matchedEmployee,
-            ticket,
-            isAutoRouted: true,
-          });
-        } else {
-          // No department employee found: send fallback email ONLY to company developer
-          const { User } = await import('../models/User.js');
-          let developer = null;
-          if (company.developer) {
-            developer = await User.findById(company.developer).select('name email role');
-          }
-
-          if (!developer || !developer.email) {
-            developer = await User.findOne({ role: 'superadmin' }).select('name email role');
-          }
-
-          if (developer) {
-            console.log(`[Auto-Routing Fallback] No department employee found for "${resolvedCategory}". Notifying developer ${developer.name}`);
-            await sendTicketFallbackToDeveloperNotification({
-              company,
-              developer,
-              ticket,
-              reason: `New grievance filed under "${resolvedCategory}". Because no dedicated employee has been assigned to this department yet, this ticket has been routed to your Developer Queue to resolve or redirect.`,
-            });
-          }
+    // ─── Isolated Single-Recipient Email Notification (Awaited for Serverless execution) ───
+    try {
+      if (matchedEmployee) {
+        // Department match found: send email ONLY to this particular employee
+        console.log(`[Auto-Routing] Routing ticket ${ticket.ticketId} to department employee ${matchedEmployee.name} (${matchedEmployee.department})`);
+        await sendTicketAssignedToEmployeeNotification({
+          company,
+          employee: matchedEmployee,
+          ticket,
+          isAutoRouted: true,
+        });
+      } else {
+        // No department employee found: send fallback email ONLY to company developer
+        const { User } = await import('../models/User.js');
+        let developer = null;
+        if (company.developer) {
+          developer = await User.findById(company.developer).select('name email role');
         }
-      } catch (mailErr) {
-        console.error('Email alert dispatch error:', mailErr.message);
+
+        if (!developer || !developer.email) {
+          developer = await User.findOne({ role: 'superadmin' }).select('name email role');
+        }
+
+        if (developer) {
+          console.log(`[Auto-Routing Fallback] No department employee found for "${resolvedCategory}". Notifying developer ${developer.name}`);
+          await sendTicketFallbackToDeveloperNotification({
+            company,
+            developer,
+            ticket,
+            reason: `New grievance filed under "${resolvedCategory}". Because no dedicated employee has been assigned to this department yet, this ticket has been routed to your Developer Queue to resolve or redirect.`,
+          });
+        }
       }
-    })();
+    } catch (mailErr) {
+      console.error('Email alert dispatch error:', mailErr.message);
+    }
 
     res.status(201).json(ticket);
   } catch (err) {
@@ -536,35 +534,34 @@ router.put('/:ticketId', authenticate, authorize('developer', 'employee', 'super
 
     await ticket.save();
 
-    // ─── Post-Update Asynchronous Notifications ───
-    (async () => {
-      try {
-        // 1. Redirection Notification to newly assigned employee
-        if (isReassigned && newlyAssignedEmployee) {
-          console.log(`[Redirection Alert] Dispatching alert to ${newlyAssignedEmployee.email} (redirected by ${req.user.name})`);
-          await sendTicketRedirectedNotification({
-            company,
-            employee: newlyAssignedEmployee,
-            developer: req.user,
-            ticket,
-          });
-        }
-
-        // 2. Query Resolved Notification to Customer
-        const isNowResolved = ['Resolved', 'Closed'].includes(ticket.status) && !['Resolved', 'Closed'].includes(previousStatus);
-        if (isNowResolved && ticket.customer?.email) {
-          console.log(`[Resolution Alert] Ticket ${ticket.ticketId} marked as ${ticket.status}. Dispatching notice to customer ${ticket.customer.email}`);
-          await sendTicketResolvedNotificationToCustomer({
-            company,
-            ticket,
-            resolvedBy: req.user.name,
-            resolutionNote: changes.join('. '),
-          });
-        }
-      } catch (postErr) {
-        console.error('Post-update notification error:', postErr.message);
+    // ─── Post-Update Notifications (Awaited for Serverless execution) ───
+    try {
+      // 1. Redirection Notification to newly assigned employee
+      if (isReassigned && newlyAssignedEmployee) {
+        console.log(`[Redirection Alert] Dispatching alert to ${newlyAssignedEmployee.email} (redirected by ${req.user.name})`);
+        await sendTicketRedirectedNotification({
+          company,
+          employee: newlyAssignedEmployee,
+          developer: req.user,
+          ticket,
+        });
       }
-    })();
+
+      // 2. Query Resolved Notification to Customer
+      const isNowResolved = ['Resolved', 'Closed'].includes(ticket.status) && !['Resolved', 'Closed'].includes(previousStatus);
+      if (isNowResolved && ticket.customer?.email) {
+        console.log(`[Resolution Alert] Ticket ${ticket.ticketId} marked as ${ticket.status}. Dispatching notice to customer ${ticket.customer.email}`);
+        await sendTicketResolvedNotificationToCustomer({
+          company,
+          ticket,
+          resolvedBy: req.user.name,
+          resolutionNote: changes.join('. '),
+        });
+      }
+    } catch (postErr) {
+      console.error('Post-update notification error:', postErr.message);
+    }
+
     const populated = await Ticket.findById(ticket._id).populate('assignedTo', 'name email department');
     res.json(populated);
   } catch (err) {
