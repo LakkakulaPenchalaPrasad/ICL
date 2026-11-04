@@ -253,7 +253,97 @@ export async function sendTicketResolvedNotificationToCustomer({ company, ticket
 }
 
 /**
- * 5. Legacy wrapper for backward compatibility
+ * 5. Customer Complaint Lodged Confirmation: Dispatched immediately to customer with Ticket ID and live tracker link
+ */
+export async function sendTicketCreatedConfirmationToCustomer({ company, ticket }) {
+  if (!ticket?.customer?.email) {
+    console.log('[Email Notice] Ticket has no customer email. Lodging confirmation skipped.');
+    return { success: false, reason: 'No customer email' };
+  }
+
+  const { appUrl } = getEmailConfig();
+  const targetEmail = ticket.customer.email;
+  const trackerLink = `${appUrl}/s/${company.slug}/track/${ticket.ticketId}`;
+
+  const message = `Your formal grievance has been successfully lodged under reference ID #${ticket.ticketId}. Our institutional redressal team has been notified. You can track real-time progress, view verified timeline logs, or communicate with the assigned team anytime via the tracking link below.`;
+
+  const templateParams = {
+    to_name: ticket.customer.name || 'Valued Customer',
+    to_email: targetEmail,
+    email: targetEmail,
+    customer_email: targetEmail,
+    user_email: targetEmail,
+    recipient_email: targetEmail,
+    reply_to: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `[Complaint Lodged] #${ticket.ticketId}: ${ticket.subject} - ${company.name}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    status: ticket.status || 'Open',
+    customer_name: ticket.customer.name || 'Customer',
+    tracking_link: trackerLink,
+    portal_link: trackerLink,
+    message,
+    description: ticket.description,
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Customer Grievance Lodged Confirmation: ${ticket.customer.email} (#${ticket.ticketId})` },
+  });
+}
+
+/**
+ * 6. Customer Progress Update Notice: Dispatched whenever staff updates status, adds replies, or changes progress
+ */
+export async function sendTicketProgressUpdateNotificationToCustomer({ company, ticket, updatedBy, updateNote, newStatus }) {
+  if (!ticket?.customer?.email) {
+    console.log('[Email Notice] Ticket has no customer email. Progress update skipped.');
+    return { success: false, reason: 'No customer email' };
+  }
+
+  const { appUrl } = getEmailConfig();
+  const targetEmail = ticket.customer.email;
+  const trackerLink = `${appUrl}/s/${company.slug}/track/${ticket.ticketId}`;
+  const statusDisplay = newStatus || ticket.status || 'In Progress';
+
+  const message = updateNote || `Progress has been updated on your grievance #${ticket.ticketId}. Current status: "${statusDisplay}". Handled by ${updatedBy || company.name + ' Staff'}. Click the link below to inspect verified audit timeline updates.`;
+
+  const templateParams = {
+    to_name: ticket.customer.name || 'Valued Customer',
+    to_email: targetEmail,
+    email: targetEmail,
+    customer_email: targetEmail,
+    user_email: targetEmail,
+    recipient_email: targetEmail,
+    reply_to: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `[Progress Update] #${ticket.ticketId}: Status is now ${statusDisplay} - ${company.name}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    status: statusDisplay,
+    customer_name: ticket.customer.name || 'Customer',
+    tracking_link: trackerLink,
+    portal_link: trackerLink,
+    message,
+    description: ticket.description,
+    resolved_by: updatedBy || 'Redressal Team',
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Customer Progress Update Alert: ${ticket.customer.email} (${statusDisplay})` },
+  });
+}
+
+/**
+ * 7. Legacy wrapper for backward compatibility
  */
 export async function sendTicketNotificationToDeveloper({ company, developer, ticket }) {
   return sendTicketFallbackToDeveloperNotification({
