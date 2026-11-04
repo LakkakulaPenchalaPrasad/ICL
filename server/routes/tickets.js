@@ -350,7 +350,7 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
 // ─── GET /api/companies/:slug/tickets/:ticketId/track ─── Public status check (limited data)
 router.get('/:ticketId/track', async (req, res) => {
   try {
-    const company = await Company.findOne({ slug: req.params.slug });
+    const company = await Company.findOne({ slug: req.params.slug }).select('_id').lean();
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
     }
@@ -358,14 +358,16 @@ router.get('/:ticketId/track', async (req, res) => {
     const ticket = await Ticket.findOne({
       ticketId: req.params.ticketId,
       company: company._id,
-    }).select('ticketId subject status priority category createdAt slaDeadline timeline');
+    })
+      .select('ticketId subject status priority category createdAt slaDeadline timeline')
+      .lean();
 
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
     // Filter out internal timeline events so customer sees NO internal alerts or staff routing details
-    const ticketObj = ticket.toObject();
+    const ticketObj = { ...ticket };
     ticketObj.timeline = (ticketObj.timeline || []).filter((tl) => {
       if (tl.isInternal) return false;
       const act = (tl.action || '').toLowerCase();

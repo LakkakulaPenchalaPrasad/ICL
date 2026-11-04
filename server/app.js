@@ -11,6 +11,8 @@ import companyRoutes from './routes/companies.js';
 import ticketRoutes from './routes/tickets.js';
 import faqRoutes from './routes/articles.js';
 import categoryRoutes from './routes/analytics.js';
+import { Company } from './models/Company.js';
+import { Ticket } from './models/Ticket.js';
 
 dotenv.config();
 
@@ -62,19 +64,26 @@ app.use('/api/admin', adminRoutes);
 // Public active companies list (for platform directory & landing page)
 app.get('/api/companies', async (req, res) => {
   try {
-    const { Company } = await import('./models/Company.js');
-    const { Ticket } = await import('./models/Ticket.js');
     const companies = await Company.find({ status: 'active' })
       .select('name slug logo industry branding ticketPrefix status')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const enriched = await Promise.all(
-      companies.map(async (c) => {
-        const ticketCount = await Ticket.countDocuments({ company: c._id });
-        return { ...c.toObject(), ticketCount };
-      })
-    );
+    const companyIds = companies.map((c) => c._id);
+    const counts = await Ticket.aggregate([
+      { $match: { company: { $in: companyIds } } },
+      { $group: { _id: '$company', ticketCount: { $sum: 1 } } },
+    ]);
 
+    const countMap = new Map(counts.map((item) => [item._id.toString(), item.ticketCount]));
+
+    const enriched = companies.map((c) => ({
+      ...c,
+      ticketCount: countMap.get(c._id.toString()) || 0,
+    }));
+
+    // Cache at edge for 15s to make landing page instantaneous
+    res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=59');
     res.json(enriched);
   } catch (err) {
     console.error('Public companies fetch error:', err);

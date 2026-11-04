@@ -71,22 +71,9 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch real tickets from MongoDB Atlas API
+  // Fetch tickets (v2 is company-scoped, legacy /api/tickets avoided)
   const fetchTickets = useCallback(async () => {
-    try {
-      setLoadingTickets(true);
-      const res = await fetch("/api/tickets");
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setTickets(data);
-        }
-      }
-    } catch (err) {
-      console.warn("Could not fetch tickets from MongoDB API, using cached state", err);
-    } finally {
-      setLoadingTickets(false);
-    }
+    setLoadingTickets(false);
   }, []);
 
   // Initial load

@@ -25,7 +25,8 @@ const getCompany = async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const company = await Company.findOne({ slug: req.params.slug })
-      .select('name slug logo industry branding status developer ticketPrefix');
+      .select('name slug logo industry branding status developer ticketPrefix')
+      .lean();
 
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
@@ -35,13 +36,11 @@ router.get('/public', async (req, res) => {
       return res.status(403).json({ error: 'This company service page is currently unavailable' });
     }
 
-    const { User } = await import('../models/User.js');
-
     const [faqs, dbCategories, activeEmployees, developer] = await Promise.all([
-      FAQ.find({ company: company._id, isVisible: true }).sort({ order: 1 }),
-      Category.find({ company: company._id, isActive: true }),
-      User.find({ company: company._id, role: 'employee', status: 'active' }).select('name department'),
-      company.developer ? User.findById(company.developer).select('name email') : null,
+      FAQ.find({ company: company._id, isVisible: true }).sort({ order: 1 }).lean(),
+      Category.find({ company: company._id, isActive: true }).lean(),
+      User.find({ company: company._id, role: 'employee', status: 'active' }).select('name department').lean(),
+      company.developer ? User.findById(company.developer).select('name email').lean() : null,
     ]);
 
     const topicDepartmentMap = [
@@ -151,6 +150,7 @@ router.get('/public', async (req, res) => {
       };
     });
 
+    res.setHeader('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=59');
     res.json({
       company,
       faqs,
@@ -170,7 +170,9 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
     const company = await getCompany(req, res);
     if (!company) return;
 
-    const tickets = await Ticket.find({ company: company._id });
+    const tickets = await Ticket.find({ company: company._id })
+      .select('status category priority slaDeadline csat assignedTo')
+      .lean();
     const total = tickets.length;
 
     const byStatus = {};
@@ -200,17 +202,24 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
     ).length;
     const slaCompliance = total > 0 ? (((total - slaBreached) / total) * 100).toFixed(1) : '100.0';
 
-    // Recent tickets
+    // Recent tickets (lean + projected)
     const recentTickets = await Ticket.find({ company: company._id })
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(10)
+      .select('ticketId subject status priority category createdAt customer assignedTo')
+      .populate('assignedTo', 'name email department')
+      .lean();
 
     // High priority watchlist
     const escalationWatch = await Ticket.find({
       company: company._id,
       priority: { $in: ['High', 'Critical'] },
       status: { $nin: ['Resolved', 'Closed'] },
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .select('ticketId subject status priority category createdAt customer assignedTo')
+      .populate('assignedTo', 'name email department')
+      .lean();
 
     const employeeCount = await User.countDocuments({
       company: company._id,
@@ -245,7 +254,9 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
         assignedTo: req.userId,
       })
         .sort({ updatedAt: -1 })
-        .limit(6);
+        .limit(6)
+        .select('ticketId subject status priority category createdAt customer')
+        .lean();
 
       myMetrics = {
         name: req.user.name,
@@ -265,7 +276,9 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
       status: { $nin: ['Resolved', 'Closed'] },
     })
       .sort({ createdAt: -1 })
-      .limit(6);
+      .limit(6)
+      .select('ticketId subject status priority category createdAt customer')
+      .lean();
 
     developerMetrics = {
       unassignedCount: unassignedTickets.length,
