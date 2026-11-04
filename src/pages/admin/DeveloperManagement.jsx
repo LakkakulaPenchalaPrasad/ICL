@@ -58,6 +58,21 @@ export const DeveloperManagement = () => {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      return setError("Developer name must be at least 2 characters long.");
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      return setError("Please enter a valid email address.");
+    }
+    if (!form.password || form.password.trim().length < 6) {
+      return setError("Password must be at least 6 characters long.");
+    }
+    if (!form.companyId) {
+      return setError("Please select an affiliated company.");
+    }
+
     const res = await apiFetch("/api/admin/developers", {
       method: "POST",
       body: JSON.stringify(form),
@@ -85,6 +100,18 @@ export const DeveloperManagement = () => {
     e.preventDefault();
     if (!editDev) return;
     setEditError("");
+
+    if (!editForm.name.trim() || editForm.name.trim().length < 2) {
+      return setEditError("Developer name must be at least 2 characters long.");
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editForm.email.trim())) {
+      return setEditError("Please enter a valid email address.");
+    }
+    if (editForm.password && editForm.password.trim().length > 0 && editForm.password.trim().length < 6) {
+      return setEditError("Reset password must be at least 6 characters long.");
+    }
+
     setSavingEdit(true);
 
     try {

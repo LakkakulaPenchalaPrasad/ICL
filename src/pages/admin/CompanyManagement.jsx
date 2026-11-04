@@ -55,11 +55,23 @@ export const CompanyManagement = () => {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      return setError("Company name must be at least 2 characters long.");
+    }
+    const resolvedSlug = form.slug ? form.slug.trim().toLowerCase() : autoSlug(form.name);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(resolvedSlug)) {
+      return setError("Slug must contain lowercase alphanumeric characters and hyphens only (e.g. quickcart).");
+    }
+    if (form.ticketPrefix && !/^[A-Z0-9]{2,6}$/.test(form.ticketPrefix.trim().toUpperCase())) {
+      return setError("Ticket prefix must be 2 to 6 uppercase letters or numbers (e.g., TNS, QC).");
+    }
+
     const res = await apiFetch("/api/admin/companies", {
       method: "POST",
       body: JSON.stringify({
         name: form.name.trim(),
-        slug: form.slug || autoSlug(form.name),
+        slug: resolvedSlug,
         industry: form.industry.trim(),
         ticketPrefix: form.ticketPrefix ? form.ticketPrefix.trim().toUpperCase() : undefined,
       }),
@@ -87,6 +99,14 @@ export const CompanyManagement = () => {
     e.preventDefault();
     if (!editComp) return;
     setEditError("");
+
+    if (!editForm.name.trim() || editForm.name.trim().length < 2) {
+      return setEditError("Company name must be at least 2 characters long.");
+    }
+    if (editForm.ticketPrefix && !/^[A-Z0-9]{2,6}$/.test(editForm.ticketPrefix.trim().toUpperCase())) {
+      return setEditError("Ticket prefix must be 2 to 6 uppercase letters or numbers (e.g., TNS, QC).");
+    }
+
     setSavingEdit(true);
 
     try {

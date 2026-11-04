@@ -24,6 +24,7 @@ const timelineSchema = new mongoose.Schema(
     action: { type: String, required: true },
     by: { type: String, required: true },
     details: { type: String, default: '' },
+    isInternal: { type: Boolean, default: false }, // Internal audit events hidden from customer
   },
   { timestamps: true }
 );

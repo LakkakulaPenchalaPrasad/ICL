@@ -39,9 +39,20 @@ export const TicketDetail = () => {
   const [newStatus, setNewStatus] = useState("");
   const [newPriority, setNewPriority] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
+  const [newDeadline, setNewDeadline] = useState("");
+  const [dateError, setDateError] = useState("");
+  const [updateSuccessMsg, setUpdateSuccessMsg] = useState("");
   const [updatingTicket, setUpdatingTicket] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const toLocalIso = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const fetchTicketAndTeam = async () => {
     try {
@@ -56,6 +67,7 @@ export const TicketDetail = () => {
         setNewStatus(data.status);
         setNewPriority(data.priority);
         setNewAssignee(data.assignedTo?._id || data.assignedTo || "");
+        setNewDeadline(toLocalIso(data.slaDeadline));
       }
       if (empRes.ok) {
         setEmployees(await empRes.json());
@@ -102,6 +114,19 @@ export const TicketDetail = () => {
   };
 
   const handleUpdateTicket = async () => {
+    setDateError("");
+    if (newDeadline) {
+      const selected = new Date(newDeadline);
+      if (isNaN(selected.getTime())) {
+        setDateError("Invalid date/time format for SLA deadline.");
+        return;
+      }
+      if (selected <= new Date()) {
+        setDateError("SLA target deadline cannot be set in the past. Please select a future date and time.");
+        return;
+      }
+    }
+
     setUpdatingTicket(true);
     try {
       const payload = {};
@@ -111,6 +136,9 @@ export const TicketDetail = () => {
       if (newAssignee !== currentAssignedId) {
         payload.assignedTo = newAssignee || null;
       }
+      if (newDeadline && newDeadline !== toLocalIso(ticket.slaDeadline)) {
+        payload.slaDeadline = new Date(newDeadline).toISOString();
+      }
 
       const res = await apiFetch(`/api/companies/${slug}/tickets/${ticketId}`, {
         method: "PUT",
@@ -118,10 +146,23 @@ export const TicketDetail = () => {
       });
 
       if (res.ok) {
+        let msg = "Ticket successfully updated.";
+        if (payload.assignedTo !== undefined) {
+          msg = "Ticket redirected. Staff alert dispatched.";
+        }
+        if (["Resolved", "Closed"].includes(payload.status)) {
+          msg = "Ticket marked as Resolved. Notice dispatched to customer.";
+        }
+        setUpdateSuccessMsg(msg);
+        setTimeout(() => setUpdateSuccessMsg(""), 5000);
         fetchTicketAndTeam();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setDateError(errData.error || "Failed to update ticket.");
       }
     } catch (err) {
       console.error(err);
+      setDateError("Network error updating ticket.");
     } finally {
       setUpdatingTicket(false);
     }
@@ -151,7 +192,8 @@ export const TicketDetail = () => {
   const hasPendingChanges =
     newStatus !== ticket.status ||
     newPriority !== ticket.priority ||
-    newAssignee !== (ticket.assignedTo?._id || ticket.assignedTo || "");
+    newAssignee !== (ticket.assignedTo?._id || ticket.assignedTo || "") ||
+    newDeadline !== toLocalIso(ticket.slaDeadline);
 
   return (
     <div className="ticket-detail-page">
@@ -232,9 +274,13 @@ export const TicketDetail = () => {
               <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
                 <User size={14} /> Customer: <strong>{ticket.customer?.name || "Anonymous"}</strong>
               </span>
-              {ticket.assignedTo && (
+              {ticket.assignedTo ? (
                 <span style={{ display: "flex", alignItems: "center", gap: "0.35rem", color: "var(--sage)", fontWeight: 600 }}>
-                  <UserCheck size={14} /> Assigned to: {ticket.assignedTo.name}
+                  <UserCheck size={14} /> Assigned to: {ticket.assignedTo.name} ({ticket.assignedTo.department || "Support"})
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#b87333", fontWeight: 600, background: "rgba(184, 115, 51, 0.12)", padding: "0.15rem 0.5rem", borderRadius: "var(--radius-sm)", border: "1px solid rgba(184, 115, 51, 0.25)" }}>
+                  <AlertTriangle size={13} /> Unassigned (Developer Triage Queue)
                 </span>
               )}
             </div>
@@ -301,12 +347,71 @@ export const TicketDetail = () => {
               </select>
             </div>
 
+            {/* SLA Target Deadline Picker with Past Date Rejection */}
+            <div>
+              <label style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginBottom: "0.25rem" }}>
+                SLA Target Deadline
+              </label>
+              <input
+                type="datetime-local"
+                min={new Date().toISOString().slice(0, 16)}
+                value={newDeadline}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewDeadline(val);
+                  if (val) {
+                    const selected = new Date(val);
+                    if (selected <= new Date()) {
+                      setDateError("SLA target deadline cannot be set in the past. Please select a future date and time.");
+                    } else {
+                      setDateError("");
+                    }
+                  } else {
+                    setDateError("");
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem 0.65rem",
+                  borderRadius: "var(--radius-sm)",
+                  border: dateError ? "1px solid var(--brick)" : "1px solid var(--border-color)",
+                  background: "var(--bg-card)",
+                  color: "var(--text-main)",
+                  fontSize: "0.85rem"
+                }}
+              />
+              {dateError && (
+                <div style={{ color: "var(--brick)", fontSize: "0.72rem", marginTop: "0.25rem", lineHeight: 1.3 }}>
+                  {dateError}
+                </div>
+              )}
+              {updateSuccessMsg && (
+                <div
+                  style={{
+                    color: "var(--sage)",
+                    background: "rgba(68, 100, 80, 0.12)",
+                    border: "1px solid rgba(68, 100, 80, 0.25)",
+                    borderRadius: "var(--radius-sm)",
+                    padding: "0.3rem 0.5rem",
+                    fontSize: "0.74rem",
+                    marginTop: "0.35rem",
+                    lineHeight: 1.3,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.3rem",
+                  }}
+                >
+                  <CheckCircle size={12} /> {updateSuccessMsg}
+                </div>
+              )}
+            </div>
+
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={handleUpdateTicket}
-                disabled={!hasPendingChanges || updatingTicket}
+                disabled={!hasPendingChanges || !!dateError || updatingTicket}
                 style={{ flex: 1 }}
               >
                 {updatingTicket ? "Saving..." : "Apply Updates"}

@@ -109,14 +109,18 @@ router.post('/companies', async (req, res) => {
   try {
     const { name, slug, industry, logo } = req.body;
 
-    if (!name || !slug) {
+    if (!name || !name.trim() || !slug || !slug.trim()) {
       return res.status(400).json({ error: 'Company name and slug are required' });
+    }
+
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Company name must be at least 2 characters long' });
     }
 
     // Validate slug format
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-    if (!slugRegex.test(slug)) {
-      return res.status(400).json({ error: 'Slug must be lowercase with hyphens only (e.g., tata-motors)' });
+    if (!slugRegex.test(slug.trim())) {
+      return res.status(400).json({ error: 'Slug must be lowercase alphanumeric with hyphens only (e.g., tata-motors, quickcart)' });
     }
 
     const existing = await Company.findOne({ slug });
@@ -153,7 +157,11 @@ router.put('/companies/:id', async (req, res) => {
     if (logo !== undefined) company.logo = logo;
     if (status) company.status = status;
     if (ticketPrefix !== undefined) {
-      company.ticketPrefix = ticketPrefix ? ticketPrefix.trim().toUpperCase() : '';
+      const cleanPrefix = ticketPrefix ? ticketPrefix.trim().toUpperCase() : '';
+      if (cleanPrefix && !/^[A-Z0-9]{2,6}$/.test(cleanPrefix)) {
+        return res.status(400).json({ error: 'Ticket prefix must be 2 to 6 uppercase letters or numbers (e.g., TNS, QC)' });
+      }
+      company.ticketPrefix = cleanPrefix;
     }
 
     // Handle developer reassignment / unlinking
@@ -255,11 +263,25 @@ router.post('/developers', async (req, res) => {
   try {
     const { name, email, password, companyId } = req.body;
 
-    if (!name || !email || !password || !companyId) {
+    if (!name || !name.trim() || !email || !password || !companyId) {
       return res.status(400).json({ error: 'Name, email, password, and companyId are required' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Developer name must be at least 2 characters long' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.toLowerCase().trim();
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address (e.g., name@company.com)' });
+    }
+
+    if (typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
@@ -332,7 +354,10 @@ router.put('/developers/:id', async (req, res) => {
     if (status) developer.status = status;
 
     // Optional password reset
-    if (password && password.trim().length > 0) {
+    if (password !== undefined && password !== null && password !== '') {
+      if (typeof password !== 'string' || password.trim().length < 6) {
+        return res.status(400).json({ error: 'Reset password must be at least 6 characters long' });
+      }
       const salt = await bcrypt.genSalt(10);
       developer.password = await bcrypt.hash(password.trim(), salt);
     }

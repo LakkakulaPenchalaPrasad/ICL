@@ -466,25 +466,26 @@ export const ServicePageCustomizer = () => {
                 style={{
                   padding: "2.25rem 1.25rem",
                   textAlign: "center",
-                  background: `linear-gradient(180deg, var(--bg-card) 0%, var(--bg-main) 100%)`,
+                  background: `radial-gradient(circle at 50% 0%, ${branding.accentColor || "#8c6a46"}18 0%, transparent 70%), linear-gradient(180deg, var(--bg-card) 0%, var(--bg-main) 100%)`,
                   borderBottom: "1px solid var(--border-color)"
                 }}
               >
                 <div
                   style={{
                     display: "inline-block",
-                    padding: "0.2rem 0.6rem",
-                    backgroundColor: "var(--bg-surface)",
-                    border: "1px solid var(--border-color)",
-                    borderRadius: "var(--radius-sm)",
+                    padding: "0.22rem 0.65rem",
+                    backgroundColor: `${branding.accentColor || "#8c6a46"}18`,
+                    border: `1px solid ${branding.accentColor || "#8c6a46"}44`,
+                    borderRadius: "var(--radius-full)",
                     fontSize: "0.65rem",
                     textTransform: "uppercase",
                     letterSpacing: "0.1em",
-                    color: "var(--text-muted)",
+                    color: branding.accentColor || "#8c6a46",
+                    fontWeight: 700,
                     marginBottom: "0.75rem"
                   }}
                 >
-                  Resolution Desk
+                  RESOLUTION DESK
                 </div>
 
                 <h4

@@ -1,55 +1,33 @@
 /**
  * Email Notification Service (EmailJS REST API)
- * Sends real-time email alerts to company developers whenever a customer files a complaint.
+ * Handles isolated, role-specific email dispatches:
+ * 1. Topic-matched employee assignment notifications
+ * 2. Developer fallback notifications when department is missing
+ * 3. Lead developer ticket redirection alerts to reassigned employees
+ * 4. Customer query resolved notifications with CSAT inspection links
  */
 
-export async function sendTicketNotificationToDeveloper({ company, developer, ticket }) {
-  if (!developer || !developer.email) {
-    console.log(`[Email Notice] No developer assigned to ${company.name} (${company.slug}). Notification skipped.`);
-    return { success: false, reason: 'No developer assigned' };
-  }
+const getEmailConfig = () => ({
+  serviceId: process.env.EMAILJS_SERVICE_ID,
+  templateId: process.env.EMAILJS_TEMPLATE_ID,
+  publicKey: process.env.EMAILJS_PUBLIC_KEY,
+  privateKey: process.env.EMAILJS_PRIVATE_KEY,
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
+  overrideEmail: process.env.DEV_NOTIFICATION_OVERRIDE || null,
+});
 
-  const serviceId = process.env.EMAILJS_SERVICE_ID;
-  const templateId = process.env.EMAILJS_TEMPLATE_ID;
-  const publicKey = process.env.EMAILJS_PUBLIC_KEY;
-  const privateKey = process.env.EMAILJS_PRIVATE_KEY; // Optional EmailJS private access token
-  const appUrl = process.env.APP_URL || 'http://localhost:5173';
+async function dispatchEmailJS({ targetEmail, templateParams, logContext }) {
+  const { serviceId, templateId, publicKey, privateKey } = getEmailConfig();
 
-  // Recipient email:
-  // Resolves to the company developer's email (or superadmin fallback).
-  // If DEV_NOTIFICATION_OVERRIDE is provided in .env (e.g. tellapallyakhil89@gmail.com),
-  // all live alerts will safely deliver to your personal inbox during evaluation!
-  const targetEmail = process.env.DEV_NOTIFICATION_OVERRIDE || developer.email;
-
-  const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
-
-  const templateParams = {
-    to_name: developer.name,
-    to_email: targetEmail,
-    company_name: company.name,
-    ticket_id: ticket.ticketId,
-    subject: ticket.subject,
-    category: ticket.category || 'General',
-    priority: ticket.priority || 'Medium',
-    customer_name: ticket.customer?.name || 'Customer',
-    customer_email: ticket.customer?.email || 'N/A',
-    customer_phone: ticket.customer?.phone || 'Not provided',
-    description: ticket.description,
-    portal_link: portalLink,
-    created_at: new Date().toLocaleString(),
-  };
-
-  // If EmailJS credentials are not configured yet, log a detailed preview in the terminal
+  // If EmailJS credentials are not configured, simulate in console
   if (!serviceId || !templateId || !publicKey) {
     console.log('\n📧 ─────────────────────────────────────────────────────────────');
-    console.log(` [EMAILJS SIMULATION] New Complaint Alert for ${company.name}`);
-    console.log(` Developer   : ${developer.name} <${developer.email}>`);
-    console.log(` Ticket ID   : ${ticket.ticketId}`);
-    console.log(` Subject     : ${ticket.subject}`);
-    console.log(` Customer    : ${ticket.customer?.name} (${ticket.customer?.email})`);
-    console.log(` Priority    : ${ticket.priority} | Category: ${ticket.category}`);
-    console.log(` Portal Link : ${portalLink}`);
-    console.log(' 💡 Setup: Add EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, and EMAILJS_PUBLIC_KEY in .env for real emails.');
+    console.log(` [EMAILJS SIMULATION] ${logContext.title}`);
+    console.log(` Recipient : ${templateParams.to_name} <${targetEmail}>`);
+    console.log(` Ticket ID : ${templateParams.ticket_id}`);
+    console.log(` Subject   : ${templateParams.subject}`);
+    console.log(` Summary   : ${templateParams.message || templateParams.description}`);
+    console.log(` Portal/Tracker Link : ${templateParams.portal_link || templateParams.tracking_link}`);
     console.log('─────────────────────────────────────────────────────────────\n');
     return { simulated: true, success: true };
   }
@@ -59,7 +37,10 @@ export async function sendTicketNotificationToDeveloper({ company, developer, ti
       service_id: serviceId,
       template_id: templateId,
       user_id: publicKey,
-      template_params: templateParams,
+      template_params: {
+        ...templateParams,
+        to_email: targetEmail,
+      },
     };
 
     if (privateKey) {
@@ -75,7 +56,7 @@ export async function sendTicketNotificationToDeveloper({ company, developer, ti
     });
 
     if (response.ok) {
-      console.log(`✓ Email notification sent to ${developer.email} for ticket ${ticket.ticketId}`);
+      console.log(`✓ Email notification sent to ${targetEmail} [${logContext.title}]`);
       return { success: true };
     } else {
       const errorText = await response.text();
@@ -83,8 +64,177 @@ export async function sendTicketNotificationToDeveloper({ company, developer, ti
       return { success: false, error: errorText };
     }
   } catch (err) {
-    console.error('✕ Failed to send EmailJS notification:', err.message);
+    console.error(`✕ Failed to send EmailJS notification [${logContext.title}]:`, err.message);
     return { success: false, error: err.message };
   }
 }
 
+/**
+ * 1. Topic-Based Routing: Sent exclusively to the responsible department employee
+ */
+export async function sendTicketAssignedToEmployeeNotification({ company, employee, ticket, isAutoRouted = true }) {
+  if (!employee || !employee.email) {
+    console.log(`[Email Notice] Assigned employee has no valid email. Notification skipped.`);
+    return { success: false, reason: 'No employee email' };
+  }
+
+  const { appUrl, overrideEmail } = getEmailConfig();
+  const targetEmail = overrideEmail || employee.email;
+  const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
+
+  const message = `A new ${ticket.category} complaint has been ${isAutoRouted ? 'auto-routed' : 'assigned'} to your department (${employee.department || 'Support'}) queue. Please review and respond within SLA targets.`;
+
+  const templateParams = {
+    to_name: employee.name,
+    to_email: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `[Assigned to You] ${ticket.category}: ${ticket.subject}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    customer_name: ticket.customer?.name || 'Customer',
+    customer_email: ticket.customer?.email || 'N/A',
+    customer_phone: ticket.customer?.phone || 'Not provided',
+    description: ticket.description,
+    portal_link: portalLink,
+    message,
+    department: employee.department || 'General',
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Assigned to Department Employee: ${employee.name} (${employee.department || 'General'})` },
+  });
+}
+
+/**
+ * 2. Developer Fallback: Sent exclusively to company developer when no department employee exists
+ */
+export async function sendTicketFallbackToDeveloperNotification({ company, developer, ticket, reason }) {
+  if (!developer || !developer.email) {
+    console.log(`[Email Notice] No developer assigned to ${company.name}. Notification skipped.`);
+    return { success: false, reason: 'No developer email' };
+  }
+
+  const { appUrl, overrideEmail } = getEmailConfig();
+  const targetEmail = overrideEmail || developer.email;
+  const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
+
+  const message = reason || `A new grievance under category "${ticket.category}" was filed. No active department specialist was found for this category, so it has been routed to your Developer Triage Queue to solve directly or redirect to any staff member.`;
+
+  const templateParams = {
+    to_name: developer.name,
+    to_email: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `[Developer Triage Required] ${ticket.category}: ${ticket.subject}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    customer_name: ticket.customer?.name || 'Customer',
+    customer_email: ticket.customer?.email || 'N/A',
+    customer_phone: ticket.customer?.phone || 'Not provided',
+    description: ticket.description,
+    portal_link: portalLink,
+    message,
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Developer Fallback Triage: ${developer.name}` },
+  });
+}
+
+/**
+ * 3. Developer Redirection Alert: Sent exclusively to the newly assigned employee
+ */
+export async function sendTicketRedirectedNotification({ company, employee, developer, ticket }) {
+  if (!employee || !employee.email) {
+    return { success: false, reason: 'No employee email' };
+  }
+
+  const { appUrl, overrideEmail } = getEmailConfig();
+  const targetEmail = overrideEmail || employee.email;
+  const portalLink = `${appUrl}/portal/${company.slug}/tickets/${ticket.ticketId}`;
+
+  const message = `Lead Developer ${developer?.name || 'Lead Admin'} has redirected grievance #${ticket.ticketId} ("${ticket.subject}") to your attention for resolution.`;
+
+  const templateParams = {
+    to_name: employee.name,
+    to_email: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `[Redirected to You] Ticket #${ticket.ticketId} from ${developer?.name || 'Developer'}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    customer_name: ticket.customer?.name || 'Customer',
+    customer_email: ticket.customer?.email || 'N/A',
+    customer_phone: ticket.customer?.phone || 'Not provided',
+    description: ticket.description,
+    portal_link: portalLink,
+    message,
+    department: employee.department || 'General',
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Ticket Redirected to Employee: ${employee.name}` },
+  });
+}
+
+/**
+ * 4. Customer Resolution Notice: Sent exclusively to the customer when their query is marked Resolved or Closed
+ */
+export async function sendTicketResolvedNotificationToCustomer({ company, ticket, resolvedBy, resolutionNote }) {
+  if (!ticket?.customer?.email) {
+    console.log(`[Email Notice] Ticket has no customer email. Resolution notification skipped.`);
+    return { success: false, reason: 'No customer email' };
+  }
+
+  const { appUrl, overrideEmail } = getEmailConfig();
+  const targetEmail = overrideEmail || ticket.customer.email;
+  const trackerLink = `${appUrl}/s/${company.slug}/track/${ticket.ticketId}`;
+
+  const message = resolutionNote || `Great news! Your grievance regarding "${ticket.subject}" has been marked as resolved by ${resolvedBy || company.name + ' Support Team'}. You can inspect the audit timeline and rate your resolution satisfaction via the tracking link below.`;
+
+  const templateParams = {
+    to_name: ticket.customer.name || 'Valued Customer',
+    to_email: targetEmail,
+    company_name: company.name,
+    ticket_id: ticket.ticketId,
+    subject: `Your query has been resolved: ${ticket.ticketId} - ${company.name}`,
+    category: ticket.category || 'General Support',
+    priority: ticket.priority || 'Medium',
+    customer_name: ticket.customer.name || 'Customer',
+    customer_email: ticket.customer.email,
+    tracking_link: trackerLink,
+    portal_link: trackerLink,
+    message,
+    description: ticket.description,
+    resolved_by: resolvedBy || 'Support Team',
+    created_at: new Date().toLocaleString(),
+  };
+
+  return dispatchEmailJS({
+    targetEmail,
+    templateParams,
+    logContext: { title: `Customer Query Resolved Alert: ${ticket.customer.email}` },
+  });
+}
+
+/**
+ * 5. Legacy wrapper for backward compatibility
+ */
+export async function sendTicketNotificationToDeveloper({ company, developer, ticket }) {
+  return sendTicketFallbackToDeveloperNotification({
+    company,
+    developer,
+    ticket,
+    reason: `New complaint filed under "${ticket.category}". Forwarded for lead developer oversight.`,
+  });
+}

@@ -17,7 +17,21 @@ import {
   LogOut,
   User,
   Inbox,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Sparkles,
+  Key,
+  CreditCard,
+  Terminal,
+  Package,
+  Laptop,
+  ShoppingBag,
+  Car,
+  Headphones,
+  HeartPulse,
+  Building2,
+  Briefcase,
+  Shield
 } from "lucide-react";
 
 export const ServicePage = () => {
@@ -133,6 +147,56 @@ export const ServicePage = () => {
   const branding = company?.branding || {};
   const primaryColor = branding.primaryColor || "var(--primary)";
   const accentColor = branding.accentColor || "var(--bronze)";
+
+  // Creative Industry Icon Helper
+  const getIndustryIcon = (industry = "", customColor = accentColor) => {
+    const props = { size: 14, style: { color: customColor, flexShrink: 0 } };
+    const ind = (industry || "").toLowerCase();
+    if (ind.includes("tech") || ind.includes("software") || ind.includes("it")) {
+      return <Laptop {...props} />;
+    }
+    if (ind.includes("commerce") || ind.includes("retail") || ind.includes("shop") || ind.includes("cart")) {
+      return <ShoppingBag {...props} />;
+    }
+    if (ind.includes("auto") || ind.includes("car") || ind.includes("motor")) {
+      return <Car {...props} />;
+    }
+    if (ind.includes("health") || ind.includes("med") || ind.includes("pharma") || ind.includes("care")) {
+      return <HeartPulse {...props} />;
+    }
+    if (ind.includes("financ") || ind.includes("bank") || ind.includes("pay")) {
+      return <CreditCard {...props} />;
+    }
+    if (ind.includes("service") || ind.includes("consult")) {
+      return <Headphones {...props} />;
+    }
+    return <Building2 {...props} />;
+  };
+
+  // Creative Category Icon Helper for FAQ topics
+  const getCategoryIcon = (categoryName = "", customColor = accentColor) => {
+    const props = { size: 13, style: { color: customColor, flexShrink: 0 } };
+    const cat = (categoryName || "").toLowerCase();
+    if (cat.includes("account") || cat.includes("login") || cat.includes("access") || cat.includes("password")) {
+      return <Key {...props} />;
+    }
+    if (cat.includes("bill") || cat.includes("invoice") || cat.includes("payment") || cat.includes("refund")) {
+      return <CreditCard {...props} />;
+    }
+    if (cat.includes("tech") || cat.includes("bug") || cat.includes("system") || cat.includes("software")) {
+      return <Terminal {...props} />;
+    }
+    if (cat.includes("order") || cat.includes("delivery") || cat.includes("shipping") || cat.includes("product")) {
+      return <Package {...props} />;
+    }
+    if (cat.includes("feature") || cat.includes("request")) {
+      return <Sparkles {...props} />;
+    }
+    if (cat.includes("security") || cat.includes("privacy")) {
+      return <Shield {...props} />;
+    }
+    return <FileText {...props} />;
+  };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-main)", color: "var(--text-body)" }}>
@@ -345,37 +409,47 @@ export const ServicePage = () => {
       <section
         style={{
           borderBottom: "1px solid var(--border-color)",
-          background: "linear-gradient(180deg, var(--bg-card) 0%, var(--bg-main) 100%)",
+          background: `radial-gradient(circle at 50% 0%, ${accentColor}18 0%, transparent 65%), linear-gradient(180deg, var(--bg-card) 0%, var(--bg-main) 100%)`,
           padding: "3.5rem 1.5rem"
         }}
       >
         <div style={{ maxWidth: "860px", margin: "0 auto", textAlign: "center" }}>
           <div
             style={{
-              display: "inline-block",
-              padding: "0.3rem 0.8rem",
-              background: "var(--bg-subtle)",
-              border: "1px solid var(--border-color)",
-              borderRadius: "var(--radius-sm)",
-              fontSize: "0.75rem",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.35rem 0.95rem",
+              background: `${accentColor}18`,
+              border: `1px solid ${accentColor}44`,
+              borderRadius: "var(--radius-full)",
+              fontSize: "0.76rem",
               textTransform: "uppercase",
               letterSpacing: "0.12em",
-              color: "var(--text-muted)",
+              color: accentColor,
+              fontWeight: 700,
               marginBottom: "1.2rem",
-              fontFamily: "var(--font-display)"
+              fontFamily: "var(--font-display)",
+              boxShadow: `0 2px 8px ${accentColor}15`
             }}
           >
-            Institutional Resolution Desk
+            {getIndustryIcon(company?.industry)}
+            <span>
+              {company?.industry
+                ? `${company.industry.toUpperCase()} RESOLUTION DESK`
+                : "INSTITUTIONAL RESOLUTION DESK"}
+            </span>
           </div>
 
           <h1
             style={{
               fontFamily: "var(--font-serif)",
-              fontSize: "2.75rem",
-              lineHeight: 1.25,
+              fontSize: "2.85rem",
+              lineHeight: 1.2,
               fontWeight: 600,
-              color: "var(--text-main)",
-              marginBottom: "1rem"
+              color: primaryColor,
+              marginBottom: "1rem",
+              letterSpacing: "-0.01em"
             }}
           >
             {branding.welcomeMessage || `Welcome to ${company?.name} Support`}
@@ -423,18 +497,19 @@ export const ServicePage = () => {
             >
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "var(--radius-sm)",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "var(--radius-md)",
                   background: accentColor,
                   color: "#fff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: "0.85rem"
+                  marginBottom: "0.95rem",
+                  boxShadow: `0 4px 12px ${accentColor}33`
                 }}
               >
-                <FileText size={20} />
+                <FileText size={22} />
               </div>
               <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.25rem" }}>
                 File a Formal Complaint
@@ -460,18 +535,18 @@ export const ServicePage = () => {
             >
               <div
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--amber-light)",
-                  color: "var(--amber)",
+                  width: "44px",
+                  height: "44px",
+                  borderRadius: "var(--radius-md)",
+                  background: `${accentColor}20`,
+                  color: accentColor,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  marginBottom: "0.85rem"
+                  marginBottom: "0.95rem"
                 }}
               >
-                <Clock size={20} />
+                <Clock size={22} />
               </div>
               <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.25rem" }}>
                 Track an Existing Ticket
@@ -499,19 +574,145 @@ export const ServicePage = () => {
                 <button
                   type="submit"
                   style={{
-                    padding: "0.45rem 0.85rem",
-                    background: "var(--primary)",
-                    color: "var(--bg-card)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.5rem 1rem",
+                    background: primaryColor,
+                    color: "#fff",
                     border: "none",
                     borderRadius: "var(--radius-sm)",
                     fontWeight: 600,
                     fontSize: "0.85rem",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    boxShadow: `0 2px 6px ${primaryColor}30`
                   }}
                 >
+                  <Search size={14} />
                   Track
                 </button>
               </form>
+            </div>
+          </div>
+
+          {/* ─── Institutional Trust & Guarantee Badges ─── */}
+          <div
+            style={{
+              marginTop: "3rem",
+              paddingTop: "2rem",
+              borderTop: "1px dashed var(--border-color)",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "1.25rem",
+              textAlign: "left"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.85rem",
+                padding: "0.85rem 1rem",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--radius-md)"
+              }}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-sm)",
+                  background: `${accentColor}18`,
+                  color: accentColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}
+              >
+                <Zap size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.2rem" }}>
+                  Guaranteed SLA Redressal
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.45 }}>
+                  Binding resolution deadlines tracked automatically from triage to final closure.
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.85rem",
+                padding: "0.85rem 1rem",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--radius-md)"
+              }}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-sm)",
+                  background: `${primaryColor}15`,
+                  color: primaryColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}
+              >
+                <ShieldCheck size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.2rem" }}>
+                  100% Confidential & Secure
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.45 }}>
+                  Multi-tenant data isolation and immutable audit logs on every customer case.
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.85rem",
+                padding: "0.85rem 1rem",
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "var(--radius-md)"
+              }}
+            >
+              <div
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "var(--radius-sm)",
+                  background: `${accentColor}18`,
+                  color: accentColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0
+                }}
+              >
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-main)", marginBottom: "0.2rem" }}>
+                  Verified Redressal Outcomes
+                </div>
+                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", lineHeight: 1.45 }}>
+                  Direct resolution engineering verified by assigned company developers.
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -531,7 +732,7 @@ export const ServicePage = () => {
           <div style={{ maxWidth: "560px", margin: "1.5rem auto 1.5rem", position: "relative" }}>
             <Search
               size={18}
-              style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }}
+              style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: accentColor }}
             />
             <input
               type="text"
@@ -555,36 +756,51 @@ export const ServicePage = () => {
             <button
               onClick={() => setSelectedCategory("all")}
               style={{
-                padding: "0.35rem 0.9rem",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--border-color)",
-                background: selectedCategory === "all" ? "var(--primary)" : "var(--bg-card)",
-                color: selectedCategory === "all" ? "var(--bg-card)" : "var(--text-body)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.45rem 1rem",
+                borderRadius: "var(--radius-full)",
+                border: selectedCategory === "all" ? `1px solid ${primaryColor}` : "1px solid var(--border-color)",
+                background: selectedCategory === "all" ? primaryColor : "var(--bg-card)",
+                color: selectedCategory === "all" ? "#fff" : "var(--text-body)",
                 fontSize: "0.82rem",
                 fontWeight: 600,
-                cursor: "pointer"
+                cursor: "pointer",
+                transition: "all var(--transition-fast)",
+                boxShadow: selectedCategory === "all" ? `0 2px 8px ${primaryColor}33` : "none"
               }}
             >
+              <Sparkles size={13} style={{ color: selectedCategory === "all" ? "#fff" : accentColor }} />
               All Topics
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat._id || cat.name}
-                onClick={() => setSelectedCategory(cat.name)}
-                style={{
-                  padding: "0.35rem 0.9rem",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--border-color)",
-                  background: selectedCategory === cat.name ? "var(--primary)" : "var(--bg-card)",
-                  color: selectedCategory === cat.name ? "var(--bg-card)" : "var(--text-body)",
-                  fontSize: "0.82rem",
-                  fontWeight: 600,
-                  cursor: "pointer"
-                }}
-              >
-                {cat.name}
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const isSelected = selectedCategory === cat.name;
+              return (
+                <button
+                  key={cat._id || cat.name}
+                  onClick={() => setSelectedCategory(cat.name)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.4rem",
+                    padding: "0.45rem 1rem",
+                    borderRadius: "var(--radius-full)",
+                    border: isSelected ? `1px solid ${primaryColor}` : "1px solid var(--border-color)",
+                    background: isSelected ? primaryColor : "var(--bg-card)",
+                    color: isSelected ? "#fff" : "var(--text-body)",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all var(--transition-fast)",
+                    boxShadow: isSelected ? `0 2px 8px ${primaryColor}33` : "none"
+                  }}
+                >
+                  {getCategoryIcon(cat.name, isSelected ? "#fff" : accentColor)}
+                  {cat.name}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -614,6 +830,7 @@ export const ServicePage = () => {
                   style={{
                     background: "var(--bg-card)",
                     border: "1px solid var(--border-color)",
+                    borderLeft: isExpanded ? `3px solid ${accentColor}` : "1px solid var(--border-color)",
                     borderRadius: "var(--radius-sm)",
                     overflow: "hidden",
                     transition: "border-color var(--transition-fast)"
@@ -637,15 +854,20 @@ export const ServicePage = () => {
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                       <span
                         style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.3rem",
                           fontSize: "0.7rem",
                           fontWeight: 700,
                           textTransform: "uppercase",
-                          padding: "0.15rem 0.45rem",
-                          borderRadius: "var(--radius-sm)",
-                          background: "var(--bg-subtle)",
-                          color: "var(--text-muted)"
+                          padding: "0.2rem 0.55rem",
+                          borderRadius: "var(--radius-full)",
+                          background: `${accentColor}15`,
+                          color: accentColor,
+                          border: `1px solid ${accentColor}30`
                         }}
                       >
+                        {getCategoryIcon(faq.category, accentColor)}
                         {faq.category || "General"}
                       </span>
                       <span style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-main)" }}>
@@ -653,7 +875,7 @@ export const ServicePage = () => {
                       </span>
                     </div>
                     {isExpanded ? (
-                      <ChevronUp size={18} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
+                      <ChevronUp size={18} style={{ color: accentColor, flexShrink: 0 }} />
                     ) : (
                       <ChevronDown size={18} style={{ color: "var(--text-dim)", flexShrink: 0 }} />
                     )}
