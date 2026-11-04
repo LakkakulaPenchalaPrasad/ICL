@@ -8,16 +8,24 @@
  */
 
 const resolveAppUrl = () => {
+  // 1. Explicit production APP_URL set in environment
   if (process.env.APP_URL && !process.env.APP_URL.includes('localhost')) {
     return process.env.APP_URL.replace(/\/$/, '');
   }
+  // 2. Vercel auto-injected system production domain
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   }
+  // 3. Vercel auto-injected deployment domain
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  return process.env.APP_URL || 'http://localhost:5173';
+  // 4. Default production fallback (ensures localhost is NEVER used on Vercel/production)
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    return 'https://resolveit-delta.vercel.app';
+  }
+  // 5. Local development fallback only
+  return 'http://localhost:5173';
 };
 
 const getEmailConfig = () => ({
