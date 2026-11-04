@@ -109,14 +109,18 @@ router.post('/companies', async (req, res) => {
   try {
     const { name, slug, industry, logo } = req.body;
 
-    if (!name || !slug) {
+    if (!name || !name.trim() || !slug || !slug.trim()) {
       return res.status(400).json({ error: 'Company name and slug are required' });
+    }
+
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Company name must be at least 2 characters long' });
     }
 
     // Validate slug format
     const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-    if (!slugRegex.test(slug)) {
-      return res.status(400).json({ error: 'Slug must be lowercase with hyphens only (e.g., tata-motors)' });
+    if (!slugRegex.test(slug.trim())) {
+      return res.status(400).json({ error: 'Slug must be lowercase alphanumeric with hyphens only (e.g., tata-motors, quickcart)' });
     }
 
     const existing = await Company.findOne({ slug });
@@ -141,44 +145,101 @@ router.post('/companies', async (req, res) => {
 // ─── PUT /api/admin/companies/:id ─── Update company
 router.put('/companies/:id', async (req, res) => {
   try {
-    const { name, industry, logo, status } = req.body;
-    const updates = {};
-    if (name) updates.name = name.trim();
-    if (industry) updates.industry = industry;
-    if (logo !== undefined) updates.logo = logo;
-    if (status) updates.status = status;
-
-    const company = await Company.findByIdAndUpdate(req.params.id, updates, { new: true })
-      .populate('developer', 'name email');
+    const { name, industry, logo, status, ticketPrefix, developerId } = req.body;
+    const company = await Company.findById(req.params.id);
 
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    res.json(company);
+    if (name) company.name = name.trim();
+    if (industry) company.industry = industry.trim();
+    if (logo !== undefined) company.logo = logo;
+    if (status) company.status = status;
+    if (ticketPrefix !== undefined) {
+      const cleanPrefix = ticketPrefix ? ticketPrefix.trim().toUpperCase() : '';
+      if (cleanPrefix && !/^[A-Z0-9]{2,6}$/.test(cleanPrefix)) {
+        return res.status(400).json({ error: 'Ticket prefix must be 2 to 6 uppercase letters or numbers (e.g., TNS, QC)' });
+      }
+      company.ticketPrefix = cleanPrefix;
+    }
+
+    // Handle developer reassignment / unlinking
+    if (developerId !== undefined) {
+      if (developerId && developerId !== '') {
+        const newDev = await User.findOne({ _id: developerId, role: 'developer' });
+        if (!newDev) {
+          return res.status(404).json({ error: 'Developer not found' });
+        }
+
+        // Unlink developer from any previous company
+        await Company.updateOne(
+          { developer: newDev._id, _id: { $ne: company._id } },
+          { $set: { developer: null } }
+        );
+
+        // If company previously had a different developer, unlink old developer's company
+        if (company.developer && company.developer.toString() !== newDev._id.toString()) {
+          await User.findByIdAndUpdate(company.developer, { company: null });
+        }
+
+        newDev.company = company._id;
+        await newDev.save();
+        company.developer = newDev._id;
+      } else {
+        // Unassign developer
+        if (company.developer) {
+          await User.findByIdAndUpdate(company.developer, { company: null });
+        }
+        company.developer = null;
+      }
+    }
+
+    await company.save();
+    const updated = await Company.findById(company._id).populate('developer', 'name email status');
+
+    res.json(updated);
   } catch (err) {
     console.error('Update company error:', err);
     res.status(500).json({ error: 'Failed to update company' });
   }
 });
 
-// ─── DELETE /api/admin/companies/:id ─── Suspend company (soft delete)
+// ─── DELETE /api/admin/companies/:id ─── Suspend or permanently delete company
 router.delete('/companies/:id', async (req, res) => {
   try {
-    const company = await Company.findByIdAndUpdate(
-      req.params.id,
-      { status: 'suspended' },
-      { new: true }
-    );
+    const { permanent } = req.query;
+    const company = await Company.findById(req.params.id);
 
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    res.json({ message: `Company "${company.name}" has been suspended`, company });
+    if (permanent === 'true') {
+      // Permanent removal: Unlink developer, unlink employees, remove tickets, remove company
+      await User.updateOne({ company: company._id, role: 'developer' }, { $set: { company: null } });
+      await User.updateMany({ company: company._id, role: 'employee' }, { $set: { company: null, status: 'dismissed' } });
+      await Ticket.deleteMany({ company: company._id });
+      await Company.findByIdAndDelete(company._id);
+
+      return res.json({
+        message: `Company "${company.name}" has been permanently removed`,
+        deletedCompanyId: company._id,
+      });
+    }
+
+    // Otherwise soft delete (toggle or set to suspended)
+    const newStatus = company.status === 'active' ? 'suspended' : 'active';
+    company.status = newStatus;
+    await company.save();
+
+    res.json({
+      message: `Company "${company.name}" is now ${newStatus}`,
+      company,
+    });
   } catch (err) {
     console.error('Delete company error:', err);
-    res.status(500).json({ error: 'Failed to suspend company' });
+    res.status(500).json({ error: 'Failed to process company deletion' });
   }
 });
 
@@ -202,11 +263,25 @@ router.post('/developers', async (req, res) => {
   try {
     const { name, email, password, companyId } = req.body;
 
-    if (!name || !email || !password || !companyId) {
+    if (!name || !name.trim() || !email || !password || !companyId) {
       return res.status(400).json({ error: 'Name, email, password, and companyId are required' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Developer name must be at least 2 characters long' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.toLowerCase().trim();
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address (e.g., name@company.com)' });
+    }
+
+    if (typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
@@ -246,23 +321,135 @@ router.post('/developers', async (req, res) => {
   }
 });
 
-// ─── DELETE /api/admin/developers/:id ─── Deactivate developer
+// ─── PUT /api/admin/developers/:id ─── Update developer details (email, name, password, company)
+router.put('/developers/:id', async (req, res) => {
+  try {
+    const { name, email, password, companyId, status } = req.body;
+
+    const developer = await User.findOne({ _id: req.params.id, role: 'developer' });
+    if (!developer) {
+      return res.status(404).json({ error: 'Developer not found' });
+    }
+
+    // If email is changing, validate & verify unique
+    if (email && email.toLowerCase().trim() !== developer.email) {
+      const cleanEmail = email.toLowerCase().trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        return res.status(400).json({ error: 'Invalid email address format' });
+      }
+
+      const existingUser = await User.findOne({
+        email: cleanEmail,
+        _id: { $ne: developer._id },
+      });
+      if (existingUser) {
+        return res.status(409).json({ error: 'An account with this email already exists' });
+      }
+
+      developer.email = cleanEmail;
+    }
+
+    if (name) developer.name = name.trim();
+    if (status) developer.status = status;
+
+    // Optional password reset
+    if (password !== undefined && password !== null && password !== '') {
+      if (typeof password !== 'string' || password.trim().length < 6) {
+        return res.status(400).json({ error: 'Reset password must be at least 6 characters long' });
+      }
+      const salt = await bcrypt.genSalt(10);
+      developer.password = await bcrypt.hash(password.trim(), salt);
+    }
+
+    // Company reassignment
+    if (companyId !== undefined) {
+      const currentCompId = developer.company ? developer.company.toString() : '';
+      const newCompId = companyId ? companyId.toString() : '';
+
+      if (currentCompId !== newCompId) {
+        // Unlink from current company
+        if (developer.company) {
+          await Company.findByIdAndUpdate(developer.company, { developer: null });
+        }
+
+        if (newCompId) {
+          const targetComp = await Company.findById(newCompId);
+          if (!targetComp) {
+            return res.status(404).json({ error: 'Selected company not found' });
+          }
+
+          // If target company already has another developer assigned, error
+          if (targetComp.developer && targetComp.developer.toString() !== developer._id.toString()) {
+            return res.status(409).json({
+              error: `Company "${targetComp.name}" already has another developer assigned.`,
+            });
+          }
+
+          targetComp.developer = developer._id;
+          await targetComp.save();
+          developer.company = targetComp._id;
+        } else {
+          developer.company = null;
+        }
+      }
+    }
+
+    await developer.save();
+
+    const populated = await User.findById(developer._id)
+      .select('-password')
+      .populate('company', 'name slug status');
+
+    res.json(populated);
+  } catch (err) {
+    console.error('Update developer error:', err);
+    res.status(500).json({ error: 'Failed to update developer' });
+  }
+});
+
+// ─── DELETE /api/admin/developers/:id ─── Deactivate or permanently delete developer
 router.delete('/developers/:id', async (req, res) => {
   try {
-    const developer = await User.findOneAndUpdate(
-      { _id: req.params.id, role: 'developer' },
-      { status: 'dismissed' },
-      { new: true }
-    ).select('-password');
+    const { permanent, action } = req.query;
+    const developer = await User.findOne({ _id: req.params.id, role: 'developer' });
 
     if (!developer) {
       return res.status(404).json({ error: 'Developer not found' });
     }
 
-    res.json({ message: `Developer "${developer.name}" has been deactivated`, developer });
+    if (permanent === 'true') {
+      // Unlink developer from company
+      await Company.updateOne({ developer: developer._id }, { $set: { developer: null } });
+      await User.findByIdAndDelete(developer._id);
+
+      return res.json({
+        message: `Developer "${developer.name}" has been permanently deleted`,
+        deletedDeveloperId: developer._id,
+      });
+    }
+
+    // Status toggle (activate / deactivate)
+    let nextStatus = 'dismissed';
+    if (action === 'activate' || developer.status === 'dismissed') {
+      nextStatus = 'active';
+    }
+
+    developer.status = nextStatus;
+    await developer.save();
+
+    // If deactivated, we can keep or unlink company. Let's keep company link unless permanent, but indicate status.
+    const populated = await User.findById(developer._id)
+      .select('-password')
+      .populate('company', 'name slug status');
+
+    res.json({
+      message: `Developer "${developer.name}" is now ${nextStatus}`,
+      developer: populated,
+    });
   } catch (err) {
     console.error('Delete developer error:', err);
-    res.status(500).json({ error: 'Failed to deactivate developer' });
+    res.status(500).json({ error: 'Failed to process developer request' });
   }
 });
 

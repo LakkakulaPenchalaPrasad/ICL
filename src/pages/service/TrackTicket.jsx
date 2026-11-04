@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   Clock,
   CheckCircle,
@@ -16,17 +17,36 @@ import {
 export const TrackTicket = () => {
   const { slug, ticketId } = useParams();
   const navigate = useNavigate();
+  const { user, isAuthenticated, currentRole } = useAuth();
 
+  const [company, setCompany] = useState(null);
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchCode, setSearchCode] = useState(ticketId || "");
 
   useEffect(() => {
+    fetchCompanyData();
     if (ticketId) {
       fetchTrackData(ticketId);
     }
   }, [slug, ticketId]);
+
+  const fetchCompanyData = async () => {
+    try {
+      const res = await fetch(`/api/companies/${slug}/public`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompany(data.company);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const branding = company?.branding || {};
+  const primaryColor = branding.primaryColor || "var(--primary)";
+  const accentColor = branding.accentColor || "var(--bronze)";
 
   const fetchTrackData = async (idToFetch) => {
     try {
@@ -103,20 +123,55 @@ export const TrackTicket = () => {
             justifyContent: "space-between"
           }}
         >
-          <Link
-            to={`/s/${slug}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              textDecoration: "none",
-              color: "var(--text-main)",
-              fontSize: "0.9rem",
-              fontWeight: 600
-            }}
-          >
-            <ArrowLeft size={16} /> Back to Service Desk
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Link
+              to={
+                isAuthenticated && currentRole === "superadmin"
+                  ? "/admin"
+                  : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                  ? `/portal/${user?.company?.slug || slug}`
+                  : "/"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-main)",
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                fontWeight: 600
+              }}
+              title="Return to Dashboard / Platform"
+            >
+              <ArrowLeft size={14} />
+              {isAuthenticated && currentRole === "superadmin"
+                ? "Admin Dashboard"
+                : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                ? "Staff Portal"
+                : "Dashboard"}
+            </Link>
+
+            <div style={{ width: "1px", height: "20px", backgroundColor: "var(--border-color)" }} />
+
+            <Link
+              to={`/s/${slug}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                color: "var(--text-main)",
+                fontSize: "0.9rem",
+                fontWeight: 600
+              }}
+            >
+              Back to Service Desk
+            </Link>
+          </div>
 
           <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Public Tracking Protocol
@@ -138,8 +193,8 @@ export const TrackTicket = () => {
             boxShadow: "var(--shadow-xs)"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", paddingLeft: "0.5rem", color: "var(--text-dim)" }}>
-            <Search size={18} />
+          <div style={{ display: "flex", alignItems: "center", paddingLeft: "0.5rem", color: accentColor }}>
+            <Search size={18} style={{ color: accentColor }} />
           </div>
           <input
             type="text"
@@ -160,13 +215,14 @@ export const TrackTicket = () => {
             type="submit"
             style={{
               padding: "0.5rem 1.25rem",
-              background: "var(--primary)",
-              color: "var(--bg-card)",
+              background: primaryColor,
+              color: "#fff",
               border: "none",
               borderRadius: "var(--radius-sm)",
               fontWeight: 600,
               fontSize: "0.85rem",
-              cursor: "pointer"
+              cursor: "pointer",
+              boxShadow: `0 2px 6px ${primaryColor}30`
             }}
           >
             Inspect
@@ -206,8 +262,8 @@ export const TrackTicket = () => {
               style={{
                 display: "inline-block",
                 padding: "0.5rem 1.2rem",
-                background: "var(--primary)",
-                color: "var(--bg-card)",
+                background: primaryColor,
+                color: "#fff",
                 borderRadius: "var(--radius-sm)",
                 textDecoration: "none",
                 fontSize: "0.85rem",
@@ -239,7 +295,7 @@ export const TrackTicket = () => {
                         fontFamily: "var(--font-mono)",
                         fontWeight: 700,
                         fontSize: "1.15rem",
-                        color: "var(--text-main)",
+                        color: primaryColor,
                         letterSpacing: "0.04em"
                       }}
                     >
@@ -256,16 +312,16 @@ export const TrackTicket = () => {
                   style={{
                     padding: "0.75rem 1rem",
                     background: "var(--bg-surface)",
-                    border: "1px solid var(--border-color)",
+                    border: `1px solid ${accentColor}33`,
                     borderRadius: "var(--radius-sm)",
                     textAlign: "right"
                   }}
                 >
-                  <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>
-                    SLA Resolution Target
+                  <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.3rem" }}>
+                    <Clock size={12} style={{ color: accentColor }} /> SLA Target
                   </div>
                   <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "var(--text-main)" }}>
-                    {ticket.slaDeadline ? new Date(ticket.slaDeadline).toLocaleDateString() : "Standard"}
+                    {ticket.slaDeadline ? new Date(ticket.slaDeadline).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Standard"}
                   </div>
                 </div>
               </div>
@@ -332,66 +388,90 @@ export const TrackTicket = () => {
                 Case Audit Ledger & Timeline
               </h2>
 
-              {ticket.timeline && ticket.timeline.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  {ticket.timeline.map((event, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        gap: "1rem",
-                        position: "relative",
-                        paddingBottom: idx === ticket.timeline.length - 1 ? 0 : "0.75rem"
-                      }}
-                    >
-                      {/* Timeline indicator */}
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                        <div
-                          style={{
-                            width: "10px",
-                            height: "10px",
-                            borderRadius: "50%",
-                            background: "var(--primary)",
-                            marginTop: "0.35rem"
-                          }}
-                        />
-                        {idx !== ticket.timeline.length - 1 && (
+              {(() => {
+                const publicTimeline = (ticket.timeline || []).filter((event) => {
+                  if (event.isInternal) return false;
+                  const act = (event.action || "").toLowerCase();
+                  const det = (event.details || "").toLowerCase();
+                  if (
+                    act.includes("specialist") ||
+                    act.includes("triage") ||
+                    act.includes("developer") ||
+                    act.includes("redirect") ||
+                    act.includes("internal") ||
+                    act.includes("staff")
+                  )
+                    return false;
+                  if (
+                    det.includes("auto-routed") ||
+                    det.includes("redirected") ||
+                    det.includes("triage queue")
+                  )
+                    return false;
+                  return true;
+                });
+
+                return publicTimeline.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {publicTimeline.map((event, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: "flex",
+                          gap: "1rem",
+                          position: "relative",
+                          paddingBottom: idx === publicTimeline.length - 1 ? 0 : "0.75rem",
+                        }}
+                      >
+                        {/* Timeline indicator */}
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
                           <div
                             style={{
-                              width: "1px",
-                              flex: 1,
-                              background: "var(--border-color)",
-                              marginTop: "0.35rem"
+                              width: "10px",
+                              height: "10px",
+                              borderRadius: "50%",
+                              background: accentColor,
+                              marginTop: "0.35rem",
                             }}
                           />
-                        )}
-                      </div>
+                          {idx !== publicTimeline.length - 1 && (
+                            <div
+                              style={{
+                                width: "1px",
+                                flex: 1,
+                                background: "var(--border-color)",
+                                marginTop: "0.35rem",
+                              }}
+                            />
+                          )}
+                        </div>
 
-                      {/* Event Details */}
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.2rem" }}>
-                          <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-main)" }}>
-                            {event.action}
-                          </span>
-                          <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-                            {event.timestamp ? new Date(event.timestamp).toLocaleString() : ""}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: "0.85rem", color: "var(--text-body)", marginBottom: "0.2rem" }}>
-                          {event.details}
-                        </p>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
-                          Logged by: {event.by || "System"}
+                        {/* Event Details */}
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.2rem" }}>
+                            <span style={{ fontWeight: 700, fontSize: "0.9rem", color: "var(--text-main)" }}>
+                              {event.action}
+                            </span>
+                            <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                              {event.timestamp ? new Date(event.timestamp).toLocaleString() : ""}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.85rem", color: "var(--text-body)", marginBottom: "0.2rem" }}>
+                            {event.details}
+                          </p>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-dim)" }}>
+                            Logged by: Support Desk
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                  No historical entries recorded for this case file yet.
-                </p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                    No historical entries recorded for this case file yet.
+                  </p>
+                );
+              })()}
             </div>
 
             {/* Note banner */}

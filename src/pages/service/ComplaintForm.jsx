@@ -13,20 +13,28 @@ import {
   User,
   Mail,
   HelpCircle,
-  Send
+  Send,
+  Calendar,
+  Clock,
+  Tag,
+  UserCheck,
+  Layers,
+  AlertTriangle,
 } from "lucide-react";
 
 export const ComplaintForm = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated, apiFetch, loginWithGoogle } = useAuth();
+  const { user, isAuthenticated, currentRole, apiFetch, loginWithGoogle } = useAuth();
 
   const [company, setCompany] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [developerInfo, setDeveloperInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Form State
   const [phone, setPhone] = useState("");
+  const [incidentDate, setIncidentDate] = useState("");
   const [category, setCategory] = useState("General Support");
   const [priority, setPriority] = useState("Medium");
   const [subject, setSubject] = useState("");
@@ -52,6 +60,7 @@ export const ComplaintForm = () => {
         const data = await res.json();
         setCompany(data.company);
         setCategories(data.categories || []);
+        setDeveloperInfo(data.developer || null);
         if (data.categories && data.categories.length > 0) {
           setCategory(data.categories[0].name);
         } else {
@@ -82,9 +91,40 @@ export const ComplaintForm = () => {
       return;
     }
 
-    if (!subject.trim() || !description.trim()) {
-      setError("Please provide a subject line and detailed explanation.");
+    if (!subject.trim() || subject.trim().length < 3) {
+      setError("Please provide a descriptive subject line (at least 3 characters).");
       return;
+    }
+
+    if (!description.trim() || description.trim().length < 10) {
+      setError("Please provide at least 10 characters of detailed explanation.");
+      return;
+    }
+
+    if (incidentDate) {
+      const parsedDate = new Date(incidentDate);
+      if (isNaN(parsedDate.getTime())) {
+        setError("Invalid incident date format.");
+        return;
+      }
+      if (parsedDate > new Date()) {
+        setError("Incident date cannot be in the future. Please select the date when the incident occurred.");
+        return;
+      }
+      const fiveYearsAgo = new Date();
+      fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+      if (parsedDate < fiveYearsAgo) {
+        setError("Incident date cannot be older than 5 years.");
+        return;
+      }
+    }
+
+    if (phone.trim()) {
+      const cleanPhone = phone.trim().replace(/[\s\-\(\)\+]/g, '');
+      if (cleanPhone.length < 7 || cleanPhone.length > 15 || !/^\d+$/.test(cleanPhone)) {
+        setError("Please provide a valid contact phone number (at least 7 digits).");
+        return;
+      }
     }
 
     try {
@@ -97,6 +137,7 @@ export const ComplaintForm = () => {
           subject: subject.trim(),
           description: description.trim(),
           phone: phone.trim(),
+          incidentDate: incidentDate || undefined,
         }),
       });
 
@@ -121,6 +162,10 @@ export const ComplaintForm = () => {
     }
   };
 
+  const branding = company?.branding || {};
+  const primaryColor = branding.primaryColor || "var(--primary)";
+  const accentColor = branding.accentColor || "var(--bronze)";
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-main)", color: "var(--text-body)" }}>
       {/* ─── Header ─── */}
@@ -140,22 +185,69 @@ export const ComplaintForm = () => {
             justifyContent: "space-between"
           }}
         >
-          <Link
-            to={`/s/${slug}`}
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Link
+              to={
+                isAuthenticated && currentRole === "superadmin"
+                  ? "/admin"
+                  : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                  ? `/portal/${user?.company?.slug || slug}`
+                  : "/"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-main)",
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                fontWeight: 600
+              }}
+              title="Return to Dashboard / Platform"
+            >
+              <ArrowLeft size={14} />
+              {isAuthenticated && currentRole === "superadmin"
+                ? "Admin Dashboard"
+                : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                ? "Staff Portal"
+                : "Dashboard"}
+            </Link>
+
+            <div style={{ width: "1px", height: "20px", backgroundColor: "var(--border-color)" }} />
+
+            <Link
+              to={`/s/${slug}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                color: "var(--text-main)",
+                fontSize: "0.9rem",
+                fontWeight: 600
+              }}
+            >
+              Back to {company?.name || "Service Portal"}
+            </Link>
+          </div>
+
+          <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              textDecoration: "none",
-              color: "var(--text-main)",
-              fontSize: "0.9rem",
-              fontWeight: 600
+              fontSize: "0.76rem",
+              color: accentColor,
+              background: `${accentColor}18`,
+              border: `1px solid ${accentColor}44`,
+              padding: "0.25rem 0.65rem",
+              borderRadius: "var(--radius-full)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 700
             }}
           >
-            <ArrowLeft size={16} /> Back to {company?.name || "Service Portal"}
-          </Link>
-
-          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Formal Grievance Lodging
           </div>
         </div>
@@ -203,7 +295,7 @@ export const ComplaintForm = () => {
             </h1>
 
             <p style={{ color: "var(--text-muted)", fontSize: "0.95rem", maxWidth: "520px", margin: "0 auto 1.75rem" }}>
-              Your complaint has been logged in the tenant ledger. An incident response specialist has been allocated according to SLA criteria.
+              Your complaint has been successfully registered in the audit ledger and prioritized according to service level commitments.
             </p>
 
             {/* Ticket Code Box */}
@@ -255,12 +347,13 @@ export const ComplaintForm = () => {
                   alignItems: "center",
                   gap: "0.4rem",
                   padding: "0.65rem 1.4rem",
-                  background: "var(--primary)",
-                  color: "var(--bg-card)",
+                  background: primaryColor,
+                  color: "#fff",
                   borderRadius: "var(--radius-sm)",
                   textDecoration: "none",
                   fontWeight: 600,
-                  fontSize: "0.9rem"
+                  fontSize: "0.9rem",
+                  boxShadow: `0 2px 8px ${primaryColor}30`
                 }}
               >
                 Track Live Status <ArrowRight size={15} />
@@ -315,7 +408,7 @@ export const ComplaintForm = () => {
             }}
           >
             <div style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "1.25rem", marginBottom: "1.75rem" }}>
-              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.85rem", color: "var(--text-main)", marginBottom: "0.4rem" }}>
+              <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.85rem", color: primaryColor, marginBottom: "0.4rem" }}>
                 Submit a Formal Dispute
               </h1>
               <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
@@ -371,8 +464,8 @@ export const ComplaintForm = () => {
                   onClick={() => setShowLoginModal(true)}
                   style={{
                     padding: "0.45rem 1rem",
-                    background: "var(--primary)",
-                    color: "var(--bg-card)",
+                    background: primaryColor,
+                    color: "#fff",
                     border: "none",
                     borderRadius: "var(--radius-sm)",
                     fontWeight: 600,
@@ -390,8 +483,8 @@ export const ComplaintForm = () => {
               {/* Complainant Identity Row */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    Complainant Name
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <User size={13} style={{ color: accentColor }} /> Complainant Name
                   </label>
                   <input
                     type="text"
@@ -410,8 +503,8 @@ export const ComplaintForm = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    Registered Email
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <Mail size={13} style={{ color: accentColor }} /> Registered Email
                   </label>
                   <input
                     type="email"
@@ -430,8 +523,8 @@ export const ComplaintForm = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    Phone Number (Optional)
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <Phone size={13} style={{ color: accentColor }} /> Contact Phone (Optional)
                   </label>
                   <input
                     type="tel"
@@ -451,11 +544,11 @@ export const ComplaintForm = () => {
                 </div>
               </div>
 
-              {/* Classification Row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+              {/* Classification & Incident Date Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    Department / Category *
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <Tag size={13} style={{ color: accentColor }} /> Department / Category *
                   </label>
                   <select
                     value={category}
@@ -481,8 +574,8 @@ export const ComplaintForm = () => {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                    Severity Level *
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <Clock size={13} style={{ color: accentColor }} /> Severity Level *
                   </label>
                   <select
                     value={priority}
@@ -504,16 +597,37 @@ export const ComplaintForm = () => {
                     <option value="Critical">Critical — Severe disruption (4hr SLA)</option>
                   </select>
                 </div>
+
+                <div>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                    <Calendar size={13} style={{ color: accentColor }} /> Date of Incident (Optional)
+                  </label>
+                  <input
+                    type="date"
+                    max={new Date().toISOString().split("T")[0]}
+                    value={incidentDate}
+                    onChange={(e) => setIncidentDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.58rem 0.85rem",
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--text-main)",
+                      fontSize: "0.9rem"
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Subject */}
               <div>
-                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                  Subject Line *
+                <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                  <FileText size={13} style={{ color: accentColor }} /> Subject Line *
                 </label>
                 <input
                   type="text"
-                  placeholder="Concise summary of the grievance..."
+                  placeholder="Concise summary of the grievance (at least 3 characters)..."
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   style={{
@@ -531,12 +645,12 @@ export const ComplaintForm = () => {
 
               {/* Description */}
               <div>
-                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
-                  Detailed Description *
+                <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.4rem" }}>
+                  <FileText size={13} style={{ color: accentColor }} /> Detailed Grievance Description *
                 </label>
                 <textarea
                   rows={6}
-                  placeholder="Please state what occurred, any transaction IDs, expected vs actual outcomes, and steps already attempted..."
+                  placeholder="Please state what occurred, any transaction IDs, expected vs actual outcomes, and steps already attempted (at least 10 characters)..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   style={{
@@ -579,14 +693,15 @@ export const ComplaintForm = () => {
                     alignItems: "center",
                     gap: "0.5rem",
                     padding: "0.65rem 1.6rem",
-                    background: "var(--primary)",
-                    color: "var(--bg-card)",
+                    background: primaryColor,
+                    color: "#fff",
                     border: "none",
                     borderRadius: "var(--radius-sm)",
                     fontWeight: 600,
                     fontSize: "0.9rem",
                     cursor: submitting ? "not-allowed" : "pointer",
-                    opacity: submitting ? 0.7 : 1
+                    opacity: submitting ? 0.7 : 1,
+                    boxShadow: `0 2px 8px ${primaryColor}30`
                   }}
                 >
                   <Send size={15} />

@@ -20,8 +20,9 @@ import {
 
 export const MyComplaints = () => {
   const { slug } = useParams();
-  const { user, isAuthenticated, apiFetch, loginWithGoogle } = useAuth();
+  const { user, isAuthenticated, currentRole, apiFetch, loginWithGoogle } = useAuth();
 
+  const [company, setCompany] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -44,12 +45,29 @@ export const MyComplaints = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
+    fetchCompanyData();
     if (isAuthenticated) {
       fetchMyTickets();
     } else {
       setLoading(false);
     }
   }, [slug, isAuthenticated]);
+
+  const fetchCompanyData = async () => {
+    try {
+      const res = await fetch(`/api/companies/${slug}/public`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompany(data.company);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const branding = company?.branding || {};
+  const primaryColor = branding.primaryColor || "var(--primary)";
+  const accentColor = branding.accentColor || "var(--bronze)";
 
   const fetchMyTickets = async () => {
     try {
@@ -199,20 +217,55 @@ export const MyComplaints = () => {
             justifyContent: "space-between"
           }}
         >
-          <Link
-            to={`/s/${slug}`}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              textDecoration: "none",
-              color: "var(--text-main)",
-              fontSize: "0.9rem",
-              fontWeight: 600
-            }}
-          >
-            <ArrowLeft size={16} /> Back to Service Desk
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <Link
+              to={
+                isAuthenticated && currentRole === "superadmin"
+                  ? "/admin"
+                  : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                  ? `/portal/${user?.company?.slug || slug}`
+                  : "/"
+              }
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.35rem 0.7rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-color)",
+                backgroundColor: "var(--bg-main)",
+                color: "var(--text-muted)",
+                textDecoration: "none",
+                fontSize: "0.82rem",
+                fontWeight: 600
+              }}
+              title="Return to Dashboard / Platform"
+            >
+              <ArrowLeft size={14} />
+              {isAuthenticated && currentRole === "superadmin"
+                ? "Admin Dashboard"
+                : isAuthenticated && (currentRole === "developer" || currentRole === "employee")
+                ? "Staff Portal"
+                : "Dashboard"}
+            </Link>
+
+            <div style={{ width: "1px", height: "20px", backgroundColor: "var(--border-color)" }} />
+
+            <Link
+              to={`/s/${slug}`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                color: "var(--text-main)",
+                fontSize: "0.9rem",
+                fontWeight: 600
+              }}
+            >
+              Back to Service Desk
+            </Link>
+          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <Link
@@ -222,12 +275,13 @@ export const MyComplaints = () => {
                 alignItems: "center",
                 gap: "0.4rem",
                 padding: "0.45rem 0.95rem",
-                background: "var(--primary)",
-                color: "var(--bg-card)",
+                background: primaryColor,
+                color: "#fff",
                 borderRadius: "var(--radius-sm)",
                 textDecoration: "none",
                 fontWeight: 600,
-                fontSize: "0.85rem"
+                fontSize: "0.85rem",
+                boxShadow: `0 2px 6px ${primaryColor}30`
               }}
             >
               + File New Dispute
@@ -262,13 +316,14 @@ export const MyComplaints = () => {
               onClick={() => setShowLoginModal(true)}
               style={{
                 padding: "0.65rem 1.6rem",
-                background: "var(--primary)",
-                color: "var(--bg-card)",
+                background: primaryColor,
+                color: "#fff",
                 border: "none",
                 borderRadius: "var(--radius-sm)",
                 fontWeight: 600,
                 fontSize: "0.9rem",
-                cursor: "pointer"
+                cursor: "pointer",
+                boxShadow: `0 2px 8px ${primaryColor}30`
               }}
             >
               Customer Sign In
@@ -279,8 +334,8 @@ export const MyComplaints = () => {
             {/* Header info */}
             <div style={{ marginBottom: "1.75rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
-                <Inbox size={22} style={{ color: "var(--primary)" }} />
-                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.9rem", color: "var(--text-main)" }}>
+                <Inbox size={22} style={{ color: accentColor }} />
+                <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.9rem", color: primaryColor }}>
                   My Case Dossiers
                 </h1>
               </div>
@@ -304,7 +359,7 @@ export const MyComplaints = () => {
               <div style={{ position: "relative", minWidth: "260px", flex: 1, maxWidth: "420px" }}>
                 <Search
                   size={16}
-                  style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-dim)" }}
+                  style={{ position: "absolute", left: "0.85rem", top: "50%", transform: "translateY(-50%)", color: accentColor }}
                 />
                 <input
                   type="text"
@@ -333,11 +388,12 @@ export const MyComplaints = () => {
                       padding: "0.4rem 0.8rem",
                       borderRadius: "var(--radius-sm)",
                       border: "1px solid var(--border-color)",
-                      background: statusFilter === st ? "var(--primary)" : "var(--bg-card)",
-                      color: statusFilter === st ? "var(--bg-card)" : "var(--text-body)",
+                      background: statusFilter === st ? primaryColor : "var(--bg-card)",
+                      color: statusFilter === st ? "#fff" : "var(--text-body)",
                       fontSize: "0.8rem",
                       fontWeight: 600,
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      boxShadow: statusFilter === st ? `0 2px 6px ${primaryColor}25` : "none"
                     }}
                   >
                     {st === "all" ? "All" : st}
@@ -489,8 +545,8 @@ export const MyComplaints = () => {
                                         maxWidth: "80%",
                                         padding: "0.75rem 1rem",
                                         borderRadius: "var(--radius-sm)",
-                                        background: isCustomer ? "var(--primary)" : "var(--bg-card)",
-                                        color: isCustomer ? "var(--bg-card)" : "var(--text-body)",
+                                        background: isCustomer ? primaryColor : "var(--bg-card)",
+                                        color: isCustomer ? "#fff" : "var(--text-body)",
                                         border: isCustomer ? "none" : "1px solid var(--border-color)",
                                         boxShadow: "var(--shadow-xs)"
                                       }}
@@ -500,7 +556,7 @@ export const MyComplaints = () => {
                                           fontSize: "0.72rem",
                                           fontWeight: 700,
                                           marginBottom: "0.2rem",
-                                          color: isCustomer ? "var(--primary-light)" : "var(--text-muted)"
+                                          color: isCustomer ? "rgba(255,255,255,0.85)" : "var(--text-muted)"
                                         }}
                                       >
                                         {m.senderName || (isCustomer ? "You" : "Support Officer")} •{" "}
@@ -547,14 +603,15 @@ export const MyComplaints = () => {
                                   alignItems: "center",
                                   gap: "0.4rem",
                                   padding: "0.6rem 1.1rem",
-                                  background: "var(--primary)",
-                                  color: "var(--bg-card)",
+                                  background: primaryColor,
+                                  color: "#fff",
                                   border: "none",
                                   borderRadius: "var(--radius-sm)",
                                   fontWeight: 600,
                                   fontSize: "0.85rem",
                                   cursor: replyText.trim() ? "pointer" : "default",
-                                  opacity: replyText.trim() ? 1 : 0.6
+                                  opacity: replyText.trim() ? 1 : 0.6,
+                                  boxShadow: `0 2px 6px ${primaryColor}25`
                                 }}
                               >
                                 <Send size={14} /> Send
@@ -603,9 +660,9 @@ export const MyComplaints = () => {
                                         style={{
                                           padding: "0.35rem 0.65rem",
                                           borderRadius: "var(--radius-sm)",
-                                          border: csatRating === num ? "2px solid var(--amber)" : "1px solid var(--border-color)",
-                                          background: csatRating === num ? "var(--amber-light)" : "var(--bg-surface)",
-                                          color: csatRating === num ? "var(--amber)" : "var(--text-body)",
+                                          border: csatRating === num ? `2px solid ${accentColor}` : "1px solid var(--border-color)",
+                                          background: csatRating === num ? `${accentColor}18` : "var(--bg-surface)",
+                                          color: csatRating === num ? accentColor : "var(--text-body)",
                                           fontWeight: 700,
                                           fontSize: "0.85rem",
                                           cursor: "pointer"
@@ -636,13 +693,14 @@ export const MyComplaints = () => {
                                       disabled={submittingCsat}
                                       style={{
                                         padding: "0.5rem 1rem",
-                                        background: "var(--primary)",
-                                        color: "var(--bg-card)",
+                                        background: primaryColor,
+                                        color: "#fff",
                                         border: "none",
                                         borderRadius: "var(--radius-sm)",
                                         fontWeight: 600,
                                         fontSize: "0.85rem",
-                                        cursor: "pointer"
+                                        cursor: "pointer",
+                                        boxShadow: `0 2px 6px ${primaryColor}25`
                                       }}
                                     >
                                       {submittingCsat ? "Saving..." : "Submit CSAT"}

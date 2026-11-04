@@ -25,7 +25,7 @@ const getCompany = async (req, res) => {
 router.get('/public', async (req, res) => {
   try {
     const company = await Company.findOne({ slug: req.params.slug })
-      .select('name slug logo industry branding status');
+      .select('name slug logo industry branding status developer ticketPrefix');
 
     if (!company) {
       return res.status(404).json({ error: 'Company not found' });
@@ -35,12 +35,129 @@ router.get('/public', async (req, res) => {
       return res.status(403).json({ error: 'This company service page is currently unavailable' });
     }
 
-    const [faqs, categories] = await Promise.all([
+    const { User } = await import('../models/User.js');
+
+    const [faqs, dbCategories, activeEmployees, developer] = await Promise.all([
       FAQ.find({ company: company._id, isVisible: true }).sort({ order: 1 }),
       Category.find({ company: company._id, isActive: true }),
+      User.find({ company: company._id, role: 'employee', status: 'active' }).select('name department'),
+      company.developer ? User.findById(company.developer).select('name email') : null,
     ]);
 
-    res.json({ company, faqs, categories });
+    const topicDepartmentMap = [
+      {
+        keywords: ['finance', 'billing', 'payment', 'refund', 'invoice', 'charge', 'money', 'fee', 'credit card'],
+        deptKeywords: ['finance', 'billing', 'accounts', 'payment', 'payroll'],
+      },
+      {
+        keywords: ['tech', 'technical', 'bug', 'software', 'crash', 'login', 'password', 'access', 'security', 'it', 'code'],
+        deptKeywords: ['tech', 'technical', 'support', 'it', 'engineering', 'developer'],
+      },
+      {
+        keywords: ['delivery', 'logistics', 'order', 'shipping', 'package', 'courier', 'dispatch', 'transit', 'warehouse'],
+        deptKeywords: ['logistics', 'delivery', 'operations', 'order', 'fulfillment', 'supply'],
+      },
+      {
+        keywords: ['quality', 'defect', 'damaged', 'replacement', 'warranty', 'broken'],
+        deptKeywords: ['quality', 'product', 'qa', 'hardware', 'logistics'],
+      },
+      {
+        keywords: ['customer', 'relations', 'general', 'inquiry', 'help', 'service'],
+        deptKeywords: ['customer', 'relations', 'support', 'service', 'client'],
+      },
+    ];
+
+    const matchEmployeeForCategory = (catName) => {
+      const clean = (catName || '').toLowerCase().trim();
+      let matched = activeEmployees.find((emp) => {
+        const dept = (emp.department || '').toLowerCase().trim();
+        return dept && (dept.includes(clean) || clean.includes(dept));
+      });
+
+      if (!matched) {
+        for (const mapping of topicDepartmentMap) {
+          if (mapping.keywords.some((kw) => clean.includes(kw))) {
+            matched = activeEmployees.find((emp) => {
+              const dept = (emp.department || '').toLowerCase().trim();
+              return dept && mapping.deptKeywords.some((dkw) => dept.includes(dkw));
+            });
+            if (matched) break;
+          }
+        }
+      }
+      return matched || null;
+    };
+
+    // Combine db categories, active employee departments, and standard fallback topics
+    const baselineTopics = [
+      'Technical Support',
+      'Finance & Billing',
+      'Customer Relations',
+      'Logistics & Delivery',
+      'Account & Access',
+      'General Support',
+    ];
+
+    const categoryNameSet = new Set();
+    const candidateList = [];
+
+    // 1. First add DB categories
+    dbCategories.forEach((c) => {
+      const name = c.name.trim();
+      const lower = name.toLowerCase();
+      if (!categoryNameSet.has(lower)) {
+        categoryNameSet.add(lower);
+        candidateList.push({ name, description: c.description || '', icon: c.icon || 'HelpCircle' });
+      }
+    });
+
+    // 2. Add employee departments if not already included
+    activeEmployees.forEach((emp) => {
+      if (emp.department && emp.department.trim()) {
+        const name = emp.department.trim();
+        const lower = name.toLowerCase();
+        if (!categoryNameSet.has(lower)) {
+          categoryNameSet.add(lower);
+          candidateList.push({ name, description: `Inquiries for ${name}`, icon: 'Layers' });
+        }
+      }
+    });
+
+    // 3. Add baseline topics if not already included
+    baselineTopics.forEach((topic) => {
+      const lower = topic.toLowerCase();
+      if (!categoryNameSet.has(lower)) {
+        categoryNameSet.add(lower);
+        candidateList.push({ name: topic, description: `General inquiries regarding ${topic}`, icon: 'HelpCircle' });
+      }
+    });
+
+    const evaluatedCategories = candidateList.map((c) => {
+      const matched = matchEmployeeForCategory(c.name);
+      return {
+        _id: c.name,
+        name: c.name,
+        description: c.description,
+        icon: c.icon,
+        hasSpecialist: !!matched,
+        developerAssigned: !!matched, // Explicitly tracks whether developer has assigned an employee to this department
+        specialistName: matched ? matched.name : null,
+        specialistDepartment: matched ? matched.department : null,
+        routingTarget: matched ? 'specialist' : 'developer',
+        badgeText: matched ? '✓ Specialist Assigned' : '⚡ Handled by Lead Developer',
+        routingMessage: matched
+          ? `Grievance will be routed directly to assigned department officer ${matched.name} (${matched.department || c.name}).`
+          : `No dedicated employee has been assigned to this department by the developer yet. Query will be routed directly to Lead Developer${developer ? ` (${developer.name})` : ''} for triage and resolution/redirection.`,
+      };
+    });
+
+    res.json({
+      company,
+      faqs,
+      categories: evaluatedCategories,
+      developer: developer ? { name: developer.name, email: developer.email } : null,
+      activeEmployeeCount: activeEmployees.length,
+    });
   } catch (err) {
     console.error('Public company info error:', err);
     res.status(500).json({ error: 'Failed to load company info' });
@@ -101,6 +218,60 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
       status: 'active',
     });
 
+    // ─── Employee & Developer Specific Perspectives ───
+    const isEmployee = req.user.role === 'employee';
+    const isDeveloper = req.user.role === 'developer';
+
+    let myMetrics = null;
+    let developerMetrics = null;
+
+    if (isEmployee) {
+      const myTickets = tickets.filter(
+        (t) => t.assignedTo && t.assignedTo.toString() === req.userId.toString()
+      );
+      const myActive = myTickets.filter((t) => !['Resolved', 'Closed'].includes(t.status));
+      const myResolved = myTickets.filter((t) => ['Resolved', 'Closed'].includes(t.status));
+
+      const myDept = (req.user.department || '').toLowerCase().trim();
+      const departmentQueue = tickets.filter((t) => {
+        if (['Resolved', 'Closed'].includes(t.status)) return false;
+        if (!myDept) return false;
+        const cat = (t.category || '').toLowerCase();
+        return cat.includes(myDept) || myDept.includes(cat);
+      });
+
+      const myRecentTickets = await Ticket.find({
+        company: company._id,
+        assignedTo: req.userId,
+      })
+        .sort({ updatedAt: -1 })
+        .limit(6);
+
+      myMetrics = {
+        name: req.user.name,
+        department: req.user.department || 'General Support',
+        assignedTotal: myTickets.length,
+        myActiveCount: myActive.length,
+        myResolvedCount: myResolved.length,
+        departmentQueueCount: departmentQueue.length,
+        recentAssigned: myRecentTickets,
+      };
+    }
+
+    // Developer triage watchlist
+    const unassignedTickets = await Ticket.find({
+      company: company._id,
+      assignedTo: null,
+      status: { $nin: ['Resolved', 'Closed'] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(6);
+
+    developerMetrics = {
+      unassignedCount: unassignedTickets.length,
+      unassignedTickets,
+    };
+
     res.json({
       total,
       byStatus,
@@ -113,6 +284,10 @@ router.get('/dashboard', authenticate, authorize('developer', 'employee', 'super
       recentTickets,
       escalationWatch,
       employeeCount,
+      isEmployee,
+      isDeveloper,
+      myMetrics,
+      developerMetrics,
     });
   } catch (err) {
     console.error('Company dashboard error:', err);
@@ -130,10 +305,20 @@ router.put('/branding', authenticate, authorize('developer', 'superadmin'), auth
     if (name) company.name = name.trim();
     if (logo !== undefined) company.logo = logo;
     if (branding) {
+      const hexColorRegex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+      if (branding.primaryColor && !hexColorRegex.test(branding.primaryColor)) {
+        return res.status(400).json({ error: 'Primary color must be a valid hex color code (e.g. #1e293b)' });
+      }
+      if (branding.accentColor && !hexColorRegex.test(branding.accentColor)) {
+        return res.status(400).json({ error: 'Accent color must be a valid hex color code (e.g. #059669)' });
+      }
+
+      if (!company.branding) company.branding = {};
       if (branding.primaryColor) company.branding.primaryColor = branding.primaryColor;
       if (branding.accentColor) company.branding.accentColor = branding.accentColor;
-      if (branding.welcomeMessage !== undefined) company.branding.welcomeMessage = branding.welcomeMessage;
-      if (branding.tagline !== undefined) company.branding.tagline = branding.tagline;
+      if (branding.welcomeMessage !== undefined) company.branding.welcomeMessage = branding.welcomeMessage.trim();
+      if (branding.tagline !== undefined) company.branding.tagline = branding.tagline.trim();
+      company.markModified('branding');
     }
 
     await company.save();
@@ -179,11 +364,25 @@ router.post('/employees', authenticate, authorize('developer', 'superadmin'), au
 
     const { name, email, password, department } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !name.trim() || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (name.trim().length < 2) {
+      return res.status(400).json({ error: 'Employee name must be at least 2 characters long' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.toLowerCase().trim();
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address (e.g., agent@company.com)' });
+    }
+
+    if (typeof password !== 'string' || password.trim().length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }

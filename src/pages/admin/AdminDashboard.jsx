@@ -121,7 +121,7 @@ export const AdminDashboard = () => {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <div style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
                         <a
                           href={`/s/${c.slug}`}
                           target="_blank"
@@ -139,6 +139,14 @@ export const AdminDashboard = () => {
                           title="Open internal company portal"
                         >
                           Portal
+                        </Link>
+                        <Link
+                          to="/admin/companies"
+                          className="btn-sm btn-ghost"
+                          style={{ textDecoration: "none" }}
+                          title="Manage company details"
+                        >
+                          Manage
                         </Link>
                       </div>
                     </td>
