@@ -1,98 +1,129 @@
-# ResolveIT - Multi-Tenant Customer Support Platform
+# ResolveIT - Multi-Tenant Customer Support & Grievance Redressal Platform (v2.0)
 
-ResolveIT is a multi-tenant customer support and complaint management web application built on the MERN stack (MongoDB, Express, React, Node.js). It allows multiple companies to run their own branded support desks with isolated data, custom FAQs, ticket workflows, priority response deadlines, and customer feedback ratings.
+ResolveIT is a multi-tenant customer dispute redressal and support automation web platform built on the MERN stack (MongoDB, Express, React, Node.js). It empowers organizations to host independent, custom-branded public resolution desks with automated topic-based department routing, SLA compliance tracking, real-time single-recipient email dispatch, and customer satisfaction audits.
 
 ---
 
-## What It Does
+## What's New in Version 2.0
 
-Most support tools are either single-company or very expensive enterprise software. ResolveIT gives multiple businesses a shared platform with strict data separation:
+### 1. Topic-Based Automated Department Routing
+- **Semantic Domain Matching**: Incoming complaints are automatically analyzed by category (*Finance & Billing, Technical Support, Logistics & Operations, Customer Relations, etc.*) and routed to the corresponding department employee (`user.department`).
+- **Load Balancing**: If multiple employees share a department, the system auto-assigns the ticket to the employee with the lowest active caseload.
+- **Lead Developer Fallback**: If a company developer has not yet added an employee for a specific department, grievances seamlessly route to the Company Developer triage queue for personal resolution or redirection.
 
-- Each company gets its own public help center URL (example: `/s/technova` or `/s/quickcart`).
-- Customers can search FAQs, submit tickets, track status using ticket IDs, chat with assigned agents, and leave star ratings once resolved.
-- Support teams have an internal portal (example: `/portal/technova`) to view ticket queues, add private team notes, reply to customers, and track response times.
-- Super Admins have a global dashboard to add new companies, assign developer accounts, and monitor overall ticket volumes across all companies.
+### 2. Isolated Single-Recipient Email Notification System
+- **Strictly Isolated Alerts**: When a grievance is filed, the alert email is dispatched **exclusively** to the single responsible department employee — preventing inbox spam across teams.
+- **Developer Triage Notice**: When a ticket falls back due to a missing department specialist, the developer alone receives a notification to triage or redirect.
+- **Staff Redirection Alerts**: When a developer reassigns a ticket from the portal console, the newly assigned employee receives an immediate alert with direct portal links.
+- **Customer Resolution Notification**: When a dispute is marked **Resolved** or **Closed**, the customer automatically receives an email notification with a case recap and direct link to submit their CSAT star rating.
+
+### 3. Customer Privacy & Internal Shielding
+- **Client-Safe Clean Interface**: Customers select clean, standard department categories without exposure to internal staffing, developer fallback tags, or employee names.
+- **Sanitized Public Audit Ledger**: Public case trackers (`/s/:slug/track/:ticketId`) and customer complaint histories (`/s/:slug/my-complaints`) filter out all internal staff allocations, routing logs, and developer reassignment notes. Customers only see public milestone updates.
+
+### 4. Dedicated Employee Resolution Workspace
+- **Personalized Desk**: Role-aware greeting with department badge (e.g. *Technical Support Specialist*) and personal metrics:
+  - **Assigned to Me**: Direct caseload count.
+  - **My Active Queue**: Open / In-Progress cases requiring response.
+  - **My Resolved Cases**: Solved disputes.
+  - **Department Open Queue**: Active cases matching the employee's department.
+- **Direct Action Table**: Active assigned cases are listed directly on the employee dashboard for immediate action.
+- **Ledger Scope Tabs**: Fast switching between *All Company Tickets*, *Assigned to Me*, *My Department Queue*, and *Unassigned Triage*.
+
+### 5. Brand Identity & Theme Studio
+- **Dynamic Palette Builder**: Hex color selectors with real-time live preview of the customer resolution desk.
+- **Dynamic Inheritance**: Tenant branding colors (`primaryColor`, `accentColor`) dynamically theme the service desk, complaint intake form, ticket tracker, and customer portal.
+
+### 6. Strict Input Validation & Date Safety
+- **SLA Target Deadline Picker**: Enforces future dates/times and rejects past dates with validation errors.
+- **Incident Date Picker**: Constrained to today's date or earlier, rejecting future dates and dates older than 5 years.
+- **Security Validation**: RFC-compliant email regex and 6-character minimum password enforcement across all account creation flows.
 
 ---
 
 ## User Roles and Access
 
-ResolveIT has four distinct user roles:
+ResolveIT defines four distinct hierarchical roles:
 
 ### 1. Super Admin
-- Platform-wide control.
-- Creates and manages companies.
-- Creates and assigns Developer accounts for each company.
-- Views system-wide ticket counts, response times, and resolution rates.
-- URL: `/admin`
+- Platform-wide governance and global analytics.
+- Onboards and manages companies, slugs, and industry classifications.
+- Creates and provisions Company Developer accounts.
+- Cross-tenant ticket metrics, resolution rates, and platform volume monitoring.
+- **URL**: `/admin`
 
 ### 2. Company Developer (Company Lead)
-- Configures company-specific settings and branding.
-- Adds and customizes FAQ articles and ticket categories.
-- Hires and manages support agents (Employees).
-- Views company-level performance analytics and customer ratings.
-- URL: `/portal/:companySlug`
+- Configures tenant-specific branding, theme colors, welcome messaging, and taglines.
+- Provisions support agents (Employees) with department disciplines (*Finance, Technical Support, Logistics, etc.*).
+- Holds full authority to resolve unassigned triage cases or redirect tickets to any employee.
+- Manages knowledge base FAQs and monitors company SLA compliance.
+- **URL**: `/portal/:companySlug`
 
-### 3. Support Employee (Agent)
-- Assigned to incoming customer tickets.
-- Replies directly to customer messages in a live thread.
-- Leaves internal notes visible only to teammates.
-- Updates ticket status (Open, In Progress, Resolved, Closed).
-- Monitored by response deadlines based on ticket priority.
-- URL: `/portal/:companySlug`
+### 3. Support Employee (Department Specialist)
+- Dedicated resolution workspace filtered to tickets auto-assigned to their department.
+- Live customer messaging thread and private internal notes visible only to staff.
+- Updates case status (*Open, In Progress, Resolved, Closed*) and tracks SLA countdowns.
+- **URL**: `/portal/:companySlug`
 
 ### 4. Customer
-- Accesses the public service page (`/s/:companySlug`).
-- Reads FAQs to find answers quickly.
-- Signs in via Google authentication to submit complaints.
-- Tracks complaint progress in real time using their ticket ID.
-- Rates resolved tickets from 1 to 5 stars.
+- Accesses tenant public resolution desks (`/s/:companySlug`).
+- Searches verified knowledge base FAQs by category.
+- Signs in via Google authentication or email to lodge formal complaints.
+- Tracks audit timelines using case reference IDs (e.g. `TNS-2026-0001`).
+- Submits 1–5 star Customer Satisfaction (CSAT) ratings upon case resolution.
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- React 19
-- Vite
-- React Router v7
-- Lucide React (icons)
-- Vanilla CSS design system (responsive, dark/light theme support)
+- **React 19** with **Vite**
+- **React Router v7**
+- **Lucide React** (icons with dynamic color inheritance)
+- **Vanilla CSS Design System** (responsive, light/dark mode support)
 
 ### Backend
-- Node.js & Express.js
-- MongoDB Atlas with Mongoose ODM
-- JSON Web Tokens (JWT) for staff session management
-- Google OAuth 2.0 (`google-auth-library`) for customer login
-- bcryptjs for password hashing
+- **Node.js** & **Express.js** (REST API)
+- **MongoDB Atlas** with **Mongoose ODM**
+- **JSON Web Tokens (JWT)** for secure session management
+- **Google OAuth 2.0** (`google-auth-library`) for customer sign-in
+- **EmailJS REST API** for role-specific transactional email alerts
+- **bcryptjs** for credential hashing
 
 ---
 
 ## Project Structure
 
 ```
-ICL/
+ICL-Project/
 ├── server/
-│   ├── config/             # Database connection setup
-│   ├── middleware/         # JWT auth and role check middleware
+│   ├── config/             # MongoDB connection and environment configuration
+│   ├── data/               # Reference seed data
+│   ├── middleware/         # JWT auth, role validation, and tenant scoping
 │   ├── models/             # Mongoose schemas (User, Company, Ticket, Category, Article)
-│   ├── routes/             # Express route handlers (auth, admin, companies, tickets, etc.)
-│   ├── app.js              # Express app setup and middleware
+│   ├── routes/             # Scoped Express routers:
+│   │   ├── admin.js        # Platform administration endpoints
+│   │   ├── auth.js         # JWT staff login & Google customer authentication
+│   │   ├── companies.js    # Public tenant info, branding, dashboard analytics & employee management
+│   │   └── tickets.js      # Grievance filing, topic auto-routing, tracking & messaging
+│   ├── utils/
+│   │   └── email.js        # EmailJS integration for isolated role notifications
+│   ├── app.js              # Express app initialization and global middleware
 │   ├── index.js            # Server entry point (port 5000)
-│   ├── seedData.js         # Initial seed script for demo companies and accounts
-│   └── resetDb.js          # Database reset and clean re-seed script
+│   ├── seedData.js         # Automated demo data seeder
+│   └── resetDb.js          # Clean database wipe and re-seed script
 ├── src/
 │   ├── components/         # Shared UI components and ProtectedRoute wrapper
-│   ├── context/            # AuthContext (state, tokens, user session)
+│   ├── context/            # AuthContext (state, JWT tokens, theme toggle)
 │   ├── pages/
-│   │   ├── admin/          # Super Admin pages (Dashboard, Companies, Developers)
-│   │   ├── portal/         # Company internal staff pages (Dashboard, Tickets, Agents, Customizer)
-│   │   ├── service/        # Public customer pages (Help desk, Complaint form, Tracker, History)
-│   │   └── LandingPage.jsx # Main platform landing page
-│   ├── App.jsx             # Client routing configuration
+│   │   ├── admin/          # Super Admin dashboard, company and developer managers
+│   │   ├── portal/         # Tenant staff portal (Dashboard, Ticket Ledger, Ticket Detail, Employees, Theme Studio)
+│   │   ├── service/        # Public customer desks (ServicePage, ComplaintForm, TrackTicket, MyComplaints)
+│   │   └── LandingPage.jsx # Platform home page
+│   ├── App.jsx             # React routing setup
 │   └── index.css           # Global stylesheet and responsive design system
-├── .env.example            # Template for environment variables
-├── package.json            # Dependencies and scripts
+├── .env.example            # Environment variables template
+├── package.json            # NPM dependencies and scripts
 └── vite.config.js          # Vite build configuration
 ```
 
@@ -101,14 +132,14 @@ ICL/
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher recommended)
+- Node.js (v18 or higher)
 - npm
-- MongoDB Atlas account or a local MongoDB database
+- MongoDB Atlas cluster or local MongoDB instance
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/LakkakulaPenchalaPrasad/ICL.git
-cd ICL
+git clone https://github.com/tellapallyakhil/ICL-Project.git
+cd ICL-Project
 ```
 
 ### 2. Install dependencies
@@ -117,105 +148,86 @@ npm install
 ```
 
 ### 3. Configure environment variables
-Create a `.env` file in the project root based on `.env.example`:
+Create a `.env` file in the project root:
 
 ```env
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
-GOOGLE_CLIENT_ID=your_google_oauth_client_id
-CLIENT_URL=http://localhost:5173
+NODE_ENV=development
+APP_URL=http://localhost:5173
+
+# Optional: EmailJS Transactional Alerts
+EMAILJS_SERVICE_ID=your_emailjs_service_id
+EMAILJS_TEMPLATE_ID=your_emailjs_template_id
+EMAILJS_PUBLIC_KEY=your_emailjs_public_key
+EMAILJS_PRIVATE_KEY=your_emailjs_private_key
+DEV_NOTIFICATION_OVERRIDE=your_email@gmail.com
 ```
 
-### 4. Seed sample data
-Populate the database with default companies, admin accounts, sample tickets, and FAQs:
+### 4. Seed demo data
+Populate the database with sample companies (*TechNova Solutions*, *QuickCart E-Commerce*), developers, department employees, categories, FAQs, and tickets:
 
 ```bash
 node server/seedData.js
 ```
 
-If you ever need to reset and re-seed from scratch:
-```bash
-node server/resetDb.js
-```
-
-### 5. Start the development servers
-Run both the Express backend and Vite frontend together:
-
+### 5. Start development servers
+Run both backend and frontend concurrently:
 ```bash
 npm start
 ```
 
-Or run them individually in separate terminals:
-- Backend: `npm run server` (runs on `http://localhost:5000`)
-- Frontend: `npm run dev` (runs on `http://localhost:5173`)
+Or start individually:
+- **Backend API**: `npm run server` (runs on `http://localhost:5000`)
+- **Frontend Client**: `npm run dev` (runs on `http://localhost:5173`)
 
 ---
 
-## Default Login Credentials
+## Seeded Login Credentials
 
-Use these seeded accounts to test different roles:
-
-| Role | Email | Password | Access Area |
+| Role | Email | Password | Access Path |
 |---|---|---|---|
-| Super Admin | `admin@resolveit.com` | `admin123` | Platform Control (`/admin`) |
-| TechNova Lead (Developer) | `dev@technova.com` | `dev123` | TechNova Portal (`/portal/technova`) |
-| TechNova Agent (Employee) | `agent@technova.com` | `agent123` | TechNova Tickets (`/portal/technova`) |
-| QuickCart Lead (Developer) | `dev@quickcart.com` | `dev123` | QuickCart Portal (`/portal/quickcart`) |
-| QuickCart Agent (Employee) | `agent@quickcart.com` | `agent123` | QuickCart Tickets (`/portal/quickcart`) |
+| Super Admin | `admin@resolveit.com` | `password123` | Platform Control (`/admin`) |
+| TechNova Lead (Developer) | `dev@technova.com` | `password123` | TechNova Portal (`/portal/technova`) |
+| TechNova Tech Agent (Employee) | `devon@technova.com` | `password123` | TechNova Portal (`/portal/technova`) |
+| TechNova Logistics Agent (Employee) | `elena@technova.com` | `password123` | TechNova Portal (`/portal/technova`) |
+| QuickCart Lead (Developer) | `dev@quickcart.com` | `password123` | QuickCart Portal (`/portal/quickcart`) |
+| QuickCart Billing Agent (Employee) | `marcus@quickcart.com` | `password123` | QuickCart Portal (`/portal/quickcart`) |
 
-Customers sign in with their Google account directly on any public service desk page.
-
----
-
-## Key URLs
-
-- Home Page: `http://localhost:5173/`
-- Super Admin Dashboard: `http://localhost:5173/admin`
-- TechNova Public Desk: `http://localhost:5173/s/technova`
-- TechNova Staff Portal: `http://localhost:5173/portal/technova`
-- QuickCart Public Desk: `http://localhost:5173/s/quickcart`
-- QuickCart Staff Portal: `http://localhost:5173/portal/quickcart`
-- Ticket Tracking Sample: `http://localhost:5173/s/technova/track/TNS-2026-0001`
+*Customers sign in via Google Authentication directly from any public service desk (`/s/:slug`).*
 
 ---
 
-## API Endpoints
+## Core Scoped API Endpoints
 
-### Auth
-- `POST /api/auth/login` - Staff email/password login
-- `POST /api/auth/google` - Customer Google OAuth verification
-- `GET /api/auth/me` - Fetch currently authenticated user session
+### Authentication
+- `POST /api/auth/login` — Staff credential login (JWT)
+- `POST /api/auth/google` — Customer Google OAuth authentication
+- `GET /api/auth/me` — Inspect active user session
 
-### Super Admin
-- `GET /api/admin/stats` - Cross-tenant ticket metrics and resolution rates
-- `GET /api/admin/companies` - List all registered companies
-- `POST /api/admin/companies` - Create a new company
-- `PUT /api/admin/companies/:id` - Update company details
-- `DELETE /api/admin/companies/:id` - Delete a company
-- `GET /api/admin/developers` - List all company developer accounts
-- `POST /api/admin/developers` - Create or assign a developer account
+### Super Admin Control
+- `GET /api/admin/stats` — Platform cross-tenant analytics
+- `GET /api/admin/companies` — List all registered companies
+- `POST /api/admin/companies` — Register new tenant company
+- `PUT /api/admin/companies/:id` — Update company settings or status
+- `GET /api/admin/developers` — List company developers
+- `POST /api/admin/developers` — Create and link company developer
 
-### Company Portal
-- `GET /api/companies/:slug` - Get public company branding, categories, and settings
-- `PUT /api/companies/:id` - Update company branding, logo, and categories
-- `GET /api/companies/:companyId/employees` - List company support agents
-- `POST /api/companies/:companyId/employees` - Add a new support agent
-- `DELETE /api/companies/:companyId/employees/:employeeId` - Remove a support agent
+### Tenant Portal & Operations
+- `GET /api/companies/:slug/public` — Public service desk info & department routing evaluation
+- `GET /api/companies/:slug/dashboard` — Role-aware metrics (Employee desk vs Developer triage)
+- `PUT /api/companies/:slug/branding` — Update theme palette, welcome headers, and taglines
+- `GET /api/companies/:slug/employees` — List active support agents
+- `POST /api/companies/:slug/employees` — Add support agent with department discipline
+- `PUT /api/companies/:slug/employees/:id` — Update agent name or department
 
-### Tickets
-- `GET /api/tickets` - List company tickets (supports status/priority filters)
-- `GET /api/tickets/:id` - Get ticket details and conversation thread
-- `POST /api/tickets` - Submit a new ticket (generates reference code like `TNS-2026-0001`)
-- `PUT /api/tickets/:id` - Update status, priority, or assigned agent
-- `POST /api/tickets/:id/messages` - Add public reply or private internal note
-- `POST /api/tickets/:id/rating` - Customer satisfaction star rating (1 to 5)
-- `GET /api/tickets/track/:referenceId` - Public tracking endpoint by ticket code
-- `GET /api/tickets/customer/my-tickets` - List logged-in customer's tickets
-
-### Knowledge Base & Analytics
-- `GET /api/articles` - Public FAQ articles filtered by company
-- `POST /api/articles` - Create FAQ article (staff only)
-- `PUT /api/articles/:id` - Edit FAQ article
-- `DELETE /api/articles/:id` - Delete FAQ article
-- `GET /api/analytics/company/:companyId` - Ticket volume, average resolution time, and rating metrics
+### Grievances & Redressal
+- `GET /api/companies/:slug/tickets` — List company tickets (scope by `assignee=me`, `scope=my-dept`, status, priority)
+- `GET /api/companies/:slug/tickets/mine` — Customer-scoped complaint history (internal logs shielded)
+- `POST /api/companies/:slug/tickets` — File grievance (triggers topic auto-routing and single-recipient email)
+- `GET /api/companies/:slug/tickets/:ticketId` — Scoped ticket detail (scoped by role)
+- `GET /api/companies/:slug/tickets/:ticketId/track` — Public tracking ledger (internal notes shielded)
+- `PUT /api/companies/:slug/tickets/:ticketId` — Update status, SLA deadline, or reassign/redirect agent
+- `POST /api/companies/:slug/tickets/:ticketId/messages` — Add customer response or private team note
+- `POST /api/companies/:slug/tickets/:ticketId/rating` — Submit 1–5 star CSAT review
