@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
+import { SetPasswordModal } from "../../components/common/SetPasswordModal";
 import {
   FileText,
   ArrowLeft,
@@ -47,10 +49,48 @@ export const ComplaintForm = () => {
 
   // Quick Sign In modal if guest
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [authModalError, setAuthModalError] = useState("");
+  const [isStaffError, setIsStaffError] = useState(false);
+  const [staffPortalLink, setStaffPortalLink] = useState("");
 
   useEffect(() => {
     fetchCompanyData();
   }, [slug]);
+
+  const handleAuthSuccess = (res) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    setShowLoginModal(false);
+    if (res?.needsPasswordSetup) {
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handleAuthError = (errMsg, res) => {
+    setAuthModalError(errMsg);
+    if (res?.isStaffAccount) {
+      setIsStaffError(true);
+      setStaffPortalLink(res.portalPath || "/portal");
+    } else {
+      setIsStaffError(false);
+    }
+  };
+
+  const handleEmailLogin = async (email, name) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
+    const result = await loginWithGoogle(cred, slug, "customer");
+    if (result.success) {
+      setShowLoginModal(false);
+      if (result.needsPasswordSetup) {
+        setShowPasswordModal(true);
+      }
+    } else {
+      handleAuthError(result.error || "Login failed", result);
+    }
+  };
 
   const fetchCompanyData = async () => {
     try {
@@ -74,20 +114,17 @@ export const ComplaintForm = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail, demoName) => {
-    const cred = `demo_customer:${demoEmail}`;
-    const result = await loginWithGoogle(cred, slug);
-    if (result.success) {
-      setShowLoginModal(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
     if (!isAuthenticated) {
       setShowLoginModal(true);
+      return;
+    }
+
+    if (currentRole && currentRole !== "customer") {
+      setError("Staff members cannot lodge customer complaints. Please switch to a customer account or return to the Staff Portal.");
       return;
     }
 
@@ -436,45 +473,113 @@ export const ComplaintForm = () => {
               </div>
             )}
 
-            {/* Unauthenticated notice */}
-            {!isAuthenticated && (
+            {/* Staff Member Session Warning */}
+            {isAuthenticated && currentRole !== "customer" && (
               <div
                 style={{
-                  padding: "1rem 1.25rem",
+                  padding: "1.25rem",
                   background: "var(--amber-light)",
                   border: "1px solid var(--amber)",
                   borderRadius: "var(--radius-sm)",
                   marginBottom: "1.75rem",
                   display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--amber)", fontWeight: 700, fontSize: "0.92rem" }}>
+                  <AlertTriangle size={18} />
+                  <span>Staff Account Active ({user?.name} &bull; {currentRole?.toUpperCase()})</span>
+                </div>
+                <p style={{ fontSize: "0.85rem", color: "var(--text-body)", margin: 0, lineHeight: 1.5 }}>
+                  Internal staff members cannot lodge customer complaints. Please switch to your customer account, or open the Staff Portal to triage tickets.
+                </p>
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.35rem", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(user?.company?.slug ? `/portal/${user.company.slug}` : "/admin")}
+                    style={{
+                      padding: "0.45rem 0.9rem",
+                      background: "var(--primary)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Go to Staff Portal &rarr;
+                  </button>
+                  <button
+                    type="button"
+                    onClick={logoutUser}
+                    style={{
+                      padding: "0.45rem 0.9rem",
+                      background: "transparent",
+                      color: "var(--text-main)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Sign Out & Use Customer Account
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Unauthenticated notice with Direct Google Sign-In */}
+            {!isAuthenticated && (
+              <div
+                style={{
+                  padding: "1.25rem",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--radius-md)",
+                  marginBottom: "1.75rem",
+                  display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "1rem"
+                  textAlign: "center",
+                  gap: "0.85rem",
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "var(--amber)" }}>
-                    Authentication Required
+                  <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--text-main)", marginBottom: "0.25rem" }}>
+                    Sign In to Lodge Grievance
                   </div>
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-body)" }}>
-                    You must sign in as a customer so this complaint is bound to your profile.
+                  <div style={{ fontSize: "0.84rem", color: "var(--text-muted)", maxWidth: "460px" }}>
+                    Your complaint will be bound to your verified customer account so you can track SLA deadlines and updates in real time.
                   </div>
                 </div>
+
+                {/* Direct Google Button on Banner */}
+                <GoogleSignInButton
+                  companySlug={slug}
+                  portalType="customer"
+                  onSuccess={handleAuthSuccess}
+                  onError={handleAuthError}
+                  width={280}
+                />
+
                 <button
                   type="button"
                   onClick={() => setShowLoginModal(true)}
                   style={{
-                    padding: "0.45rem 1rem",
-                    background: primaryColor,
-                    color: "#fff",
+                    background: "none",
                     border: "none",
-                    borderRadius: "var(--radius-sm)",
+                    color: "var(--primary)",
+                    fontSize: "0.78rem",
                     fontWeight: 600,
-                    fontSize: "0.82rem",
                     cursor: "pointer",
-                    whiteSpace: "nowrap"
+                    textDecoration: "underline",
+                    padding: 0,
                   }}
                 >
-                  Sign In with Google
+                  Or sign in with email address
                 </button>
               </div>
             )}
@@ -489,14 +594,15 @@ export const ComplaintForm = () => {
                   <input
                     type="text"
                     disabled
-                    value={user?.name || "Guest (Please Sign In)"}
+                    value={user?.name || ""}
+                    placeholder="Sign in above to verify identity"
                     style={{
                       width: "100%",
                       padding: "0.6rem 0.85rem",
                       background: "var(--bg-surface)",
                       border: "1px solid var(--border-color)",
                       borderRadius: "var(--radius-sm)",
-                      color: "var(--text-dim)",
+                      color: "var(--text-main)",
                       fontSize: "0.9rem"
                     }}
                   />
@@ -507,16 +613,17 @@ export const ComplaintForm = () => {
                     <Mail size={13} style={{ color: accentColor }} /> Registered Email
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     disabled
-                    value={user?.email || "No email detected"}
+                    value={user?.email || ""}
+                    placeholder="Sign in above to verify registered email"
                     style={{
                       width: "100%",
                       padding: "0.6rem 0.85rem",
                       background: "var(--bg-surface)",
                       border: "1px solid var(--border-color)",
                       borderRadius: "var(--radius-sm)",
-                      color: "var(--text-dim)",
+                      color: "var(--text-main)",
                       fontSize: "0.9rem"
                     }}
                   />
@@ -745,19 +852,77 @@ export const ComplaintForm = () => {
                 Sign In to File Complaint
               </h3>
             </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-              To ensure compliance and audit integrity, please sign in with your verified name and email address:
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Sign in with your verified Google account so your grievance is tied to your customer profile:
             </p>
 
+            {/* Error & Staff Account Notice */}
+            {authModalError && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  background: "var(--brick-light)",
+                  border: "1px solid var(--brick)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brick)",
+                  fontSize: "0.84rem",
+                  marginBottom: "1.25rem",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div>{authModalError}</div>
+                {isStaffError && (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLoginModal(false);
+                        navigate(staffPortalLink);
+                      }}
+                      style={{
+                        padding: "0.45rem 0.9rem",
+                        background: "var(--primary)",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go to Staff Portal &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                companySlug={slug}
+                portalType="customer"
+                onSuccess={handleAuthSuccess}
+                onError={handleAuthError}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "1rem 0" }}>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                Or Sign In with Email
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+            </div>
+
             <form
-              onSubmit={async (e) => {
+              onSubmit={(e) => {
                 e.preventDefault();
                 const emailInput = e.target.elements.email.value;
                 const nameInput = e.target.elements.name.value;
                 if (!emailInput) return;
-                const cred = `demo_customer:${emailInput.trim().toLowerCase()}`;
-                const res = await loginWithGoogle(cred, slug);
-                if (res.success) setShowLoginModal(false);
+                handleEmailLogin(emailInput, nameInput);
               }}
               style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}
             >
@@ -841,6 +1006,17 @@ export const ComplaintForm = () => {
           </div>
         </div>
       )}
+
+      {/* First-Time Customer Password Setup Modal */}
+      <SetPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        userName={user?.name}
+        userEmail={user?.email}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+        }}
+      />
     </div>
   );
 };

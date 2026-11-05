@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
+import { SetPasswordModal } from "../../components/common/SetPasswordModal";
 import {
   Search,
   ChevronDown,
@@ -58,6 +60,12 @@ export const ServicePage = () => {
   const [customEmail, setCustomEmail] = useState("");
   const [customName, setCustomName] = useState("");
 
+  // First-time customer password setup
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [authModalError, setAuthModalError] = useState("");
+  const [isStaffError, setIsStaffError] = useState(false);
+  const [staffPortalLink, setStaffPortalLink] = useState("");
+
   useEffect(() => {
     fetchCompanyData();
   }, [slug]);
@@ -82,11 +90,37 @@ export const ServicePage = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail, demoName) => {
-    const cred = `demo_customer:${demoEmail}`;
-    const result = await loginWithGoogle(cred, slug);
+  const handleAuthSuccess = (res) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    setShowLoginModal(false);
+    if (res?.needsPasswordSetup) {
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handleAuthError = (errMsg, res) => {
+    setAuthModalError(errMsg);
+    if (res?.isStaffAccount) {
+      setIsStaffError(true);
+      setStaffPortalLink(res.portalPath || "/portal");
+    } else {
+      setIsStaffError(false);
+    }
+  };
+
+  const handleEmailLogin = async (email, name) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
+    const result = await loginWithGoogle(cred, slug, "customer");
     if (result.success) {
       setShowLoginModal(false);
+      if (result.needsPasswordSetup) {
+        setShowPasswordModal(true);
+      }
+    } else {
+      handleAuthError(result.error || "Login failed", result);
     }
   };
 
@@ -337,30 +371,42 @@ export const ServicePage = () => {
                 </Link>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  {user?.avatar ? (
+                  {user?.avatar && (
                     <img
                       src={user.avatar}
-                      alt={user.name}
-                      style={{ width: "32px", height: "32px", borderRadius: "50%", border: "1px solid var(--border-color)" }}
-                    />
-                  ) : (
-                    <div
+                      alt={user.name || "User"}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        if (e.currentTarget.nextSibling) {
+                          e.currentTarget.nextSibling.style.display = "flex";
+                        }
+                      }}
                       style={{
                         width: "32px",
                         height: "32px",
                         borderRadius: "50%",
-                        background: "var(--bg-surface)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "0.8rem",
-                        fontWeight: 600,
-                        color: "var(--text-main)"
+                        border: "1px solid var(--border-color)",
+                        objectFit: "cover"
                       }}
-                    >
-                      {user?.name?.[0] || "U"}
-                    </div>
+                    />
                   )}
+                  <div
+                    style={{
+                      display: user?.avatar ? "none" : "flex",
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      background: "var(--primary)",
+                      color: "#ffffff",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      border: "1px solid var(--border-color)"
+                    }}
+                  >
+                    {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
+                  </div>
                   <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)" }}>
                     {user?.name?.split(" ")[0]}
                   </span>
@@ -435,9 +481,9 @@ export const ServicePage = () => {
           >
             {getIndustryIcon(company?.industry)}
             <span>
-              {company?.industry
+              {company?.industry && company.industry.trim().length > 1
                 ? `${company.industry.toUpperCase()} RESOLUTION DESK`
-                : "INSTITUTIONAL RESOLUTION DESK"}
+                : "OFFICIAL REDRESSAL DESK"}
             </span>
           </div>
 
@@ -959,14 +1005,65 @@ export const ServicePage = () => {
                 Customer Verification
               </h3>
             </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-              To ensure legitimate tracking, case file confidentiality, and reply notifications, please verify your customer identity:
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Sign in with your verified Google account to manage your complaints and receive tracking updates:
             </p>
+
+            {/* Error & Staff Account Notice */}
+            {authModalError && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  background: "var(--brick-light)",
+                  border: "1px solid var(--brick)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brick)",
+                  fontSize: "0.84rem",
+                  marginBottom: "1.25rem",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div>{authModalError}</div>
+                {isStaffError && (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLoginModal(false);
+                        navigate(staffPortalLink);
+                      }}
+                      style={{
+                        padding: "0.45rem 0.9rem",
+                        background: "var(--primary)",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go to Staff Portal &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                companySlug={slug}
+                portalType="customer"
+                onSuccess={handleAuthSuccess}
+                onError={handleAuthError}
+              />
+            </div>
 
             {/* Custom Input */}
             <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginBottom: "1rem" }}>
               <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-                Or Sign In with Any Custom Email:
+                Or Sign In with Email Address:
               </div>
               <input
                 type="text"
@@ -1004,7 +1101,7 @@ export const ServicePage = () => {
             <div style={{ display: "flex", gap: "0.75rem" }}>
               {customEmail && (
                 <button
-                  onClick={() => handleDemoLogin(customEmail, customName || customEmail.split("@")[0])}
+                  onClick={() => handleEmailLogin(customEmail, customName || customEmail.split("@")[0])}
                   style={{
                     flex: 1,
                     padding: "0.6rem",
@@ -1038,6 +1135,17 @@ export const ServicePage = () => {
           </div>
         </div>
       )}
+
+      {/* First-Time Google Customer Password Setup Modal */}
+      <SetPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        userName={user?.name}
+        userEmail={user?.email}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+        }}
+      />
     </div>
   );
 };

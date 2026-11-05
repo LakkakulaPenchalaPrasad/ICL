@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
+import { SetPasswordModal } from "../../components/common/SetPasswordModal";
 import {
   Inbox,
   ArrowLeft,
@@ -41,8 +43,46 @@ export const MyComplaints = () => {
   const [csatFeedback, setCsatFeedback] = useState("");
   const [submittingCsat, setSubmittingCsat] = useState(false);
 
-  // Demo sign in modal for guest visitors
+  // Quick sign in modal for guest visitors
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [authModalError, setAuthModalError] = useState("");
+  const [isStaffError, setIsStaffError] = useState(false);
+  const [staffPortalLink, setStaffPortalLink] = useState("");
+
+  const handleAuthSuccess = (res) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    setShowLoginModal(false);
+    if (res?.needsPasswordSetup) {
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handleAuthError = (errMsg, res) => {
+    setAuthModalError(errMsg);
+    if (res?.isStaffAccount) {
+      setIsStaffError(true);
+      setStaffPortalLink(res.portalPath || "/portal");
+    } else {
+      setIsStaffError(false);
+    }
+  };
+
+  const handleEmailLogin = async (email) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
+    const result = await loginWithGoogle(cred, slug, "customer");
+    if (result.success) {
+      setShowLoginModal(false);
+      if (result.needsPasswordSetup) {
+        setShowPasswordModal(true);
+      }
+    } else {
+      handleAuthError(result.error || "Login failed", result);
+    }
+  };
 
   useEffect(() => {
     fetchCompanyData();
@@ -87,14 +127,6 @@ export const MyComplaints = () => {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoEmail, demoName) => {
-    const cred = `demo_customer:${demoEmail}`;
-    const result = await loginWithGoogle(cred, slug);
-    if (result.success) {
-      setShowLoginModal(false);
     }
   };
 
@@ -753,18 +785,76 @@ export const MyComplaints = () => {
                 Customer Verification
               </h3>
             </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-              Please enter your verified email address to view all complaints filed under your profile:
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Sign in with Google to view and track all active grievances lodged under your profile:
             </p>
 
+            {/* Error & Staff Account Notice */}
+            {authModalError && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  background: "var(--brick-light)",
+                  border: "1px solid var(--brick)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brick)",
+                  fontSize: "0.84rem",
+                  marginBottom: "1.25rem",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div>{authModalError}</div>
+                {isStaffError && (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLoginModal(false);
+                        window.location.href = staffPortalLink;
+                      }}
+                      style={{
+                        padding: "0.45rem 0.9rem",
+                        background: "var(--primary)",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go to Staff Portal &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                companySlug={slug}
+                portalType="customer"
+                onSuccess={handleAuthSuccess}
+                onError={handleAuthError}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "1rem 0" }}>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                Or Sign In with Email
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+            </div>
+
             <form
-              onSubmit={async (e) => {
+              onSubmit={(e) => {
                 e.preventDefault();
                 const emailInput = e.target.elements.email.value;
                 if (!emailInput) return;
-                const cred = `demo_customer:${emailInput.trim().toLowerCase()}`;
-                const res = await loginWithGoogle(cred, slug);
-                if (res.success) setShowLoginModal(false);
+                handleEmailLogin(emailInput);
               }}
               style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}
             >
@@ -827,6 +917,18 @@ export const MyComplaints = () => {
           </div>
         </div>
       )}
+
+      {/* First-Time Customer Password Setup Modal */}
+      <SetPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        userName={user?.name}
+        userEmail={user?.email}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+          fetchMyTickets();
+        }}
+      />
     </div>
   );
 };

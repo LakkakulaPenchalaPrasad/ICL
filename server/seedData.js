@@ -6,7 +6,7 @@ import { FAQ } from './models/Article.js';
 import { Category } from './models/Category.js';
 
 /**
- * Seeds the database with demo data if collections are empty.
+ * Seeds the database with initial sample data if collections are empty.
  * Creates: 1 Super Admin, 2 Companies, 2 Developers, 4 Employees,
  *          categories, FAQs, and sample tickets per company.
  */
@@ -17,7 +17,7 @@ export async function seedDatabaseIfEmpty() {
     return;
   }
 
-  console.log('Seeding database with demo data...');
+  console.log('Seeding database with initial sample data...');
 
   const salt = await bcrypt.genSalt(10);
   const defaultPassword = await bcrypt.hash('password123', salt);
@@ -122,11 +122,11 @@ export async function seedDatabaseIfEmpty() {
 
   console.log('  ✓ 4 Employees created');
 
-  // ─── 5. Demo Customers ───
+  // ─── 5. Verified Customers ───
   const cust1 = await User.create({
     name: 'Samantha Brooks',
     email: 'samantha@gmail.com',
-    googleId: 'google_demo_001',
+    googleId: 'google_cust_001',
     avatar: '',
     role: 'customer',
   });
@@ -134,7 +134,7 @@ export async function seedDatabaseIfEmpty() {
   const cust2 = await User.create({
     name: 'Arjun Patel',
     email: 'arjun@gmail.com',
-    googleId: 'google_demo_002',
+    googleId: 'google_cust_002',
     avatar: '',
     role: 'customer',
   });
@@ -142,12 +142,12 @@ export async function seedDatabaseIfEmpty() {
   const cust3 = await User.create({
     name: 'Dr. Evelyn Reed',
     email: 'evelyn@gmail.com',
-    googleId: 'google_demo_003',
+    googleId: 'google_cust_003',
     avatar: '',
     role: 'customer',
   });
 
-  console.log('  ✓ 3 Demo Customers created');
+  console.log('  ✓ 3 Verified Customers created');
 
   // ─── 6. Categories ───
   const techCategories = [
