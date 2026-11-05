@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{subject}}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #0f172a;
+      line-height: 1.6;
+    }
+    .wrapper {
+      max-width: 600px;
+      margin: 30px auto;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .header {
+      background: #0f172a;
+      padding: 24px 30px;
+      border-bottom: 3px solid #2563eb;
+    }
+    .brand-title {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .brand-sub {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .body-content {
+      padding: 30px;
+    }
+    .greeting {
+      font-size: 16px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+    .message-box {
+      background: #f8fafc;
+      border-left: 4px solid #2563eb;
+      padding: 14px 18px;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      color: #334155;
+      margin-bottom: 24px;
+    }
+    .ticket-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .ticket-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .ticket-id {
+      font-family: monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .priority-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      background: #fee2e2;
+      color: #b91c1c;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .ticket-subject {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 14px;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .meta-table td {
+      padding: 6px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .meta-label {
+      color: #64748b;
+      font-weight: 600;
+      width: 40%;
+    }
+    .meta-val {
+      color: #0f172a;
+      font-weight: 500;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 30px 0 10px;
+    }
+    .btn {
+      display: inline-block;
+      background: #2563eb;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .footer {
+      background: #f8fafc;
+      padding: 20px 30px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 12px;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="brand-title">{{company_name}} &bull; Staff Portal Alert</div>
+      <div class="brand-sub">Internal Dispute Routing & Triage Management</div>
+    </div>
+    <div class="body-content">
+      <div class="greeting">Hello {{to_name}},</div>
+      <div class="message-box">
+        {{message}}
+      </div>
+
+      <div class="ticket-card">
+        <div class="ticket-header">
+          <span class="ticket-id">#{{ticket_id}}</span>
+          <span class="priority-badge">{{priority}} Priority</span>
+        </div>
+        <div class="ticket-subject">{{subject}}</div>
+        <table class="meta-table">
+          <tr>
+            <td class="meta-label">Complainant:</td>
+            <td class="meta-val">{{customer_name}} ({{customer_email}})</td>
+          </tr>
+          <tr>
+            <td class="meta-label">Department:</td>
+            <td class="meta-val">{{department}}</td>
+          </tr>
+          <tr>
+            <td class="meta-label">Category:</td>
+            <td class="meta-val">{{category}}</td>
+          </tr>
+          <tr>
+            <td class="meta-label">SLA Commitment:</td>
+            <td class="meta-val">{{sla_deadline}}</td>
+          </tr>
+          <tr>
+            <td class="meta-label">Description:</td>
+            <td class="meta-val">{{description}}</td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="btn-container">
+        <a href="{{action_url}}" class="btn" target="_blank">Open Ticket in Staff Portal &rarr;</a>
+      </div>
+    </div>
+    <div class="footer">
+      Internal Staff Notification &bull; ResolveIT Enterprise Service Platform<br/>
+      Assigned queue: {{department}}
+    </div>
+  </div>
+</body>
+</html>
