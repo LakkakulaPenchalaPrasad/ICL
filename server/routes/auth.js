@@ -6,7 +6,15 @@ import { Company } from '../models/Company.js';
 import { authenticate, generateToken } from '../middleware/auth.js';
 
 const router = express.Router();
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// ─── GET /api/auth/google/client-id ─── Expose Google Client ID to frontend
+router.get('/google/client-id', (req, res) => {
+  res.json({
+    clientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '',
+  });
+});
+
+const getGoogleClient = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID);
 
 // ─── POST /api/auth/login ─── Email/Password Login (admin, developer, employee)
 router.post('/login', async (req, res) => {
@@ -67,7 +75,7 @@ router.post('/google', async (req, res) => {
 
     // Verify Google token with demo/mock fallback for development
     let payload;
-    if (credential.startsWith('demo_') || !process.env.GOOGLE_CLIENT_ID) {
+    if (credential.startsWith('demo_') || (!process.env.GOOGLE_CLIENT_ID && !process.env.VITE_GOOGLE_CLIENT_ID)) {
       const email = req.body.email || (credential.includes(':') ? credential.split(':')[1] : 'samantha@gmail.com');
       const name = req.body.name || email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
       payload = {
@@ -78,12 +86,15 @@ router.post('/google', async (req, res) => {
       };
     } else {
       try {
-        const ticket = await googleClient.verifyIdToken({
+        const client = getGoogleClient();
+        const audience = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+        const ticket = await client.verifyIdToken({
           idToken: credential,
-          audience: process.env.GOOGLE_CLIENT_ID,
+          audience,
         });
         payload = ticket.getPayload();
       } catch (err) {
+        console.error('Google token verification error:', err.message);
         return res.status(401).json({ error: 'Invalid Google token' });
       }
     }

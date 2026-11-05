@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
 import {
   Search,
   ChevronDown,
@@ -959,14 +960,23 @@ export const ServicePage = () => {
                 Customer Verification
               </h3>
             </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-              To ensure legitimate tracking, case file confidentiality, and reply notifications, please verify your customer identity:
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Sign in with your verified Google account to manage your complaints and receive tracking updates:
             </p>
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                companySlug={slug}
+                onSuccess={() => setShowLoginModal(false)}
+                onError={(err) => alert(err)}
+              />
+            </div>
 
             {/* Custom Input */}
             <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginBottom: "1rem" }}>
               <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-                Or Sign In with Any Custom Email:
+                Or Sign In with Demo / Custom Email:
               </div>
               <input
                 type="text"

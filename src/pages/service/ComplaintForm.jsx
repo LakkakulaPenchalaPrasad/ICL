@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
 import {
   FileText,
   ArrowLeft,
@@ -745,9 +746,27 @@ export const ComplaintForm = () => {
                 Sign In to File Complaint
               </h3>
             </div>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
-              To ensure compliance and audit integrity, please sign in with your verified name and email address:
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Sign in with your verified Google account so your grievance is tied to your customer profile:
             </p>
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                companySlug={slug}
+                onSuccess={() => setShowLoginModal(false)}
+                onError={(err) => alert(err)}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "1rem 0" }}>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                Or Demo / Manual Login
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+            </div>
 
             <form
               onSubmit={async (e) => {
