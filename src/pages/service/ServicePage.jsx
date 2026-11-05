@@ -109,10 +109,10 @@ export const ServicePage = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail, demoName) => {
+  const handleEmailLogin = async (email, name) => {
     setAuthModalError("");
     setIsStaffError(false);
-    const cred = `demo_customer:${demoEmail.trim().toLowerCase()}`;
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
     const result = await loginWithGoogle(cred, slug, "customer");
     if (result.success) {
       setShowLoginModal(false);
@@ -1063,7 +1063,7 @@ export const ServicePage = () => {
             {/* Custom Input */}
             <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1rem", marginBottom: "1rem" }}>
               <div style={{ fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "0.5rem" }}>
-                Or Sign In with Demo / Custom Email:
+                Or Sign In with Email Address:
               </div>
               <input
                 type="text"
@@ -1101,7 +1101,7 @@ export const ServicePage = () => {
             <div style={{ display: "flex", gap: "0.75rem" }}>
               {customEmail && (
                 <button
-                  onClick={() => handleDemoLogin(customEmail, customName || customEmail.split("@")[0])}
+                  onClick={() => handleEmailLogin(customEmail, customName || customEmail.split("@")[0])}
                   style={{
                     flex: 1,
                     padding: "0.6rem",

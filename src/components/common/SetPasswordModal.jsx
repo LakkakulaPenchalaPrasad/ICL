@@ -294,3 +294,4 @@ export const SetPasswordModal = ({ isOpen, onClose, onSuccess, userEmail, userNa
     </div>
   );
 };
+

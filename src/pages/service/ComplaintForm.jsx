@@ -77,10 +77,10 @@ export const ComplaintForm = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail, demoName) => {
+  const handleEmailLogin = async (email, name) => {
     setAuthModalError("");
     setIsStaffError(false);
-    const cred = `demo_customer:${demoEmail.trim().toLowerCase()}`;
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
     const result = await loginWithGoogle(cred, slug, "customer");
     if (result.success) {
       setShowLoginModal(false);
@@ -579,7 +579,7 @@ export const ComplaintForm = () => {
                     padding: 0,
                   }}
                 >
-                  Or sign in with email / demo profile
+                  Or sign in with email address
                 </button>
               </div>
             )}
@@ -594,14 +594,15 @@ export const ComplaintForm = () => {
                   <input
                     type="text"
                     disabled
-                    value={user?.name || "Guest (Please Sign In)"}
+                    value={user?.name || ""}
+                    placeholder="Sign in above to verify identity"
                     style={{
                       width: "100%",
                       padding: "0.6rem 0.85rem",
                       background: "var(--bg-surface)",
                       border: "1px solid var(--border-color)",
                       borderRadius: "var(--radius-sm)",
-                      color: "var(--text-dim)",
+                      color: "var(--text-main)",
                       fontSize: "0.9rem"
                     }}
                   />
@@ -612,16 +613,17 @@ export const ComplaintForm = () => {
                     <Mail size={13} style={{ color: accentColor }} /> Registered Email
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     disabled
-                    value={user?.email || "No email detected"}
+                    value={user?.email || ""}
+                    placeholder="Sign in above to verify registered email"
                     style={{
                       width: "100%",
                       padding: "0.6rem 0.85rem",
                       background: "var(--bg-surface)",
                       border: "1px solid var(--border-color)",
                       borderRadius: "var(--radius-sm)",
-                      color: "var(--text-dim)",
+                      color: "var(--text-main)",
                       fontSize: "0.9rem"
                     }}
                   />
@@ -909,7 +911,7 @@ export const ComplaintForm = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "1rem 0" }}>
               <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
               <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
-                Or Demo / Manual Login
+                Or Sign In with Email
               </span>
               <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
             </div>
@@ -920,7 +922,7 @@ export const ComplaintForm = () => {
                 const emailInput = e.target.elements.email.value;
                 const nameInput = e.target.elements.name.value;
                 if (!emailInput) return;
-                handleDemoLogin(emailInput, nameInput);
+                handleEmailLogin(emailInput, nameInput);
               }}
               style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}
             >

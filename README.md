@@ -110,7 +110,7 @@ ICL-Project/
 │   │   └── email.js        # EmailJS integration for isolated role notifications
 │   ├── app.js              # Express app initialization and global middleware
 │   ├── index.js            # Server entry point (port 5000)
-│   ├── seedData.js         # Automated demo data seeder
+│   ├── seedData.js         # Automated initial data seeder
 │   └── resetDb.js          # Clean database wipe and re-seed script
 ├── src/
 │   ├── components/         # Shared UI components and ProtectedRoute wrapper
@@ -165,7 +165,7 @@ EMAILJS_PRIVATE_KEY=your_emailjs_private_key
 DEV_NOTIFICATION_OVERRIDE=your_email@gmail.com
 ```
 
-### 4. Seed demo data
+### 4. Seed sample data
 Populate the database with sample companies (*TechNova Solutions*, *QuickCart E-Commerce*), developers, department employees, categories, FAQs, and tickets:
 
 ```bash

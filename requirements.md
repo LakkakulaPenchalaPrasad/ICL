@@ -616,7 +616,7 @@ Format: `{COMPANY_PREFIX}-{YEAR}-{SEQUENTIAL_NUMBER}`
 
 ---
 
-## 13. Seed Data (For Demo/Presentation)
+## 13. Seed Data (Sample / Evaluation Data)
 
 Pre-populate the database with:
 - 1 Super Admin account

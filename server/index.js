@@ -16,7 +16,7 @@ async function start() {
     console.log('Connecting to MongoDB Atlas Cluster...');
     await connectToDatabase();
 
-    // Seed demo data if database is empty
+    // Seed initial records if database is empty
     await seedDatabaseIfEmpty();
   } catch (err) {
     console.error('Database connection warning (running in fallback mode):', err.message);

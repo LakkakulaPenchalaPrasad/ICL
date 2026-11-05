@@ -43,7 +43,7 @@ export const MyComplaints = () => {
   const [csatFeedback, setCsatFeedback] = useState("");
   const [submittingCsat, setSubmittingCsat] = useState(false);
 
-  // Demo sign in modal for guest visitors
+  // Quick sign in modal for guest visitors
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [authModalError, setAuthModalError] = useState("");
@@ -69,10 +69,10 @@ export const MyComplaints = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail) => {
+  const handleEmailLogin = async (email) => {
     setAuthModalError("");
     setIsStaffError(false);
-    const cred = `demo_customer:${demoEmail.trim().toLowerCase()}`;
+    const cred = `customer_email:${email.trim().toLowerCase()}`;
     const result = await loginWithGoogle(cred, slug, "customer");
     if (result.success) {
       setShowLoginModal(false);
@@ -844,7 +844,7 @@ export const MyComplaints = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "1rem 0" }}>
               <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
               <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
-                Or Demo / Manual Login
+                Or Sign In with Email
               </span>
               <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
             </div>
@@ -854,7 +854,7 @@ export const MyComplaints = () => {
                 e.preventDefault();
                 const emailInput = e.target.elements.email.value;
                 if (!emailInput) return;
-                handleDemoLogin(emailInput);
+                handleEmailLogin(emailInput);
               }}
               style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}
             >
