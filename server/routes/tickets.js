@@ -303,19 +303,37 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
       timeline: initialTimeline,
     });
 
-    // ─── Isolated Single-Recipient Email Notification (Awaited for Serverless execution) ───
+    // ─── Parallel Email Notifications with Isolated Error Handling (Serverless Optimized) ───
     try {
+      const emailDispatches = [];
+
+      // 1. Customer Confirmation is Priority #1 — dispatched immediately
+      if (ticket.customer?.email) {
+        console.log(`[Customer Notice] Dispatching ticket creation confirmation to ${ticket.customer.email} (ID: ${ticket.ticketId})`);
+        emailDispatches.push(
+          sendTicketCreatedConfirmationToCustomer({
+            company,
+            ticket,
+          }).catch((err) => {
+            console.error('✕ Customer email confirmation error:', err.message);
+          })
+        );
+      }
+
+      // 2. Staff / Developer Notification — dispatched concurrently in parallel
       if (matchedEmployee) {
-        // Department match found: send email ONLY to this particular employee
         console.log(`[Auto-Routing] Routing ticket ${ticket.ticketId} to department employee ${matchedEmployee.name} (${matchedEmployee.department})`);
-        await sendTicketAssignedToEmployeeNotification({
-          company,
-          employee: matchedEmployee,
-          ticket,
-          isAutoRouted: true,
-        });
+        emailDispatches.push(
+          sendTicketAssignedToEmployeeNotification({
+            company,
+            employee: matchedEmployee,
+            ticket,
+            isAutoRouted: true,
+          }).catch((err) => {
+            console.error('✕ Employee alert error:', err.message);
+          })
+        );
       } else {
-        // No department employee found: send fallback email ONLY to company developer
         const { User } = await import('../models/User.js');
         let developer = null;
         if (company.developer) {
@@ -328,23 +346,21 @@ router.post('/', authenticate, authorize('customer'), async (req, res) => {
 
         if (developer) {
           console.log(`[Auto-Routing Fallback] No department employee found for "${resolvedCategory}". Notifying developer ${developer.name}`);
-          await sendTicketFallbackToDeveloperNotification({
-            company,
-            developer,
-            ticket,
-            reason: `New grievance filed under "${resolvedCategory}". Because no dedicated employee has been assigned to this department yet, this ticket has been routed to your Developer Queue to resolve or redirect.`,
-          });
+          emailDispatches.push(
+            sendTicketFallbackToDeveloperNotification({
+              company,
+              developer,
+              ticket,
+              reason: `New grievance filed under "${resolvedCategory}". Because no dedicated employee has been assigned to this department yet, this ticket has been routed to your Developer Queue to resolve or redirect.`,
+            }).catch((err) => {
+              console.error('✕ Developer fallback alert error:', err.message);
+            })
+          );
         }
       }
 
-      // Send Complaint Lodged Confirmation directly to customer with their Ticket ID and live tracking link
-      if (ticket.customer?.email) {
-        console.log(`[Customer Notice] Dispatching ticket creation confirmation to ${ticket.customer.email} (ID: ${ticket.ticketId})`);
-        await sendTicketCreatedConfirmationToCustomer({
-          company,
-          ticket,
-        });
-      }
+      // Execute both notifications concurrently so neither blocks the other
+      await Promise.allSettled(emailDispatches);
     } catch (mailErr) {
       console.error('Email alert dispatch error:', mailErr.message);
     }
