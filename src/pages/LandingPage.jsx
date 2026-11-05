@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { GoogleSignInButton } from "../components/common/GoogleSignInButton";
+import { SetPasswordModal } from "../components/common/SetPasswordModal";
 import {
   Shield,
   Building2,
@@ -21,7 +22,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Briefcase,
-  AlertTriangle
+  AlertTriangle,
+  User
 } from "lucide-react";
 
 const DEFAULT_COMPANIES = [
@@ -64,6 +66,16 @@ export const LandingPage = () => {
   const [docketSearch, setDocketSearch] = useState("");
   const [companies, setCompanies] = useState(DEFAULT_COMPANIES);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+
+  // Customer Sign In State
+  const [showCustomerLogin, setShowCustomerLogin] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPassword, setCustomerPassword] = useState("");
+  const [customerError, setCustomerError] = useState("");
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [showCustomerPasswordModal, setShowCustomerPasswordModal] = useState(false);
+  const [isStaffOnCustomerModal, setIsStaffOnCustomerModal] = useState(false);
+  const [isCustomerOnStaffModal, setIsCustomerOnStaffModal] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -108,8 +120,9 @@ export const LandingPage = () => {
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setError("");
+    setIsCustomerOnStaffModal(false);
     setLoading(true);
-    const result = await loginUser(email, password);
+    const result = await loginUser(email, password, "staff");
     setLoading(false);
 
     if (result.success) {
@@ -132,6 +145,51 @@ export const LandingPage = () => {
       }
     } else {
       setError(result.error || "Authentication failed");
+      if (result.isCustomerAccount) {
+        setIsCustomerOnStaffModal(true);
+      }
+    }
+  };
+
+  const handleCustomerEmailLogin = async (e) => {
+    if (e) e.preventDefault();
+    setCustomerError("");
+    setIsStaffOnCustomerModal(false);
+    setCustomerLoading(true);
+    const result = await loginUser(customerEmail, customerPassword, "customer");
+    setCustomerLoading(false);
+
+    if (result.success) {
+      setShowCustomerLogin(false);
+      const defaultSlug = companies[0]?.slug || "technova";
+      if (redirectUrl) navigate(redirectUrl);
+      else navigate(`/s/${defaultSlug}/my-complaints`);
+    } else {
+      setCustomerError(result.error || "Authentication failed");
+      if (result.isStaffAccount) {
+        setIsStaffOnCustomerModal(true);
+      }
+    }
+  };
+
+  const handleCustomerGoogleSuccess = (res) => {
+    setShowCustomerLogin(false);
+    setCustomerError("");
+    if (res?.needsPasswordSetup) {
+      setShowCustomerPasswordModal(true);
+    } else {
+      const defaultSlug = companies[0]?.slug || "technova";
+      if (redirectUrl) navigate(redirectUrl);
+      else navigate(`/s/${defaultSlug}/my-complaints`);
+    }
+  };
+
+  const handleCustomerAuthError = (errMsg, res) => {
+    setCustomerError(errMsg);
+    if (res?.isStaffAccount) {
+      setIsStaffOnCustomerModal(true);
+    } else {
+      setIsStaffOnCustomerModal(false);
     }
   };
 
@@ -270,9 +328,30 @@ export const LandingPage = () => {
                 </button>
               </div>
             ) : (
-              <button className="btn btn-primary btn-sm" onClick={() => setShowLogin(true)}>
-                <LogIn size={15} /> Staff Sign In
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => {
+                    setCustomerError("");
+                    setIsStaffOnCustomerModal(false);
+                    setShowCustomerLogin(true);
+                  }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                >
+                  <User size={14} /> Customer Sign In
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setError("");
+                    setIsCustomerOnStaffModal(false);
+                    setShowLogin(true);
+                  }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                >
+                  <Lock size={14} /> Staff Sign In
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -859,7 +938,19 @@ export const LandingPage = () => {
               QuickCart Help Desk
             </Link>
             <button
-              onClick={() => setShowLogin(true)}
+              onClick={() => {
+                setCustomerError("");
+                setShowCustomerLogin(true);
+              }}
+              style={{ background: "none", border: "none", color: "var(--text-main)", cursor: "pointer", fontSize: "0.85rem", padding: 0 }}
+            >
+              Customer Sign In
+            </button>
+            <button
+              onClick={() => {
+                setError("");
+                setShowLogin(true);
+              }}
               style={{ background: "none", border: "none", color: "var(--text-main)", cursor: "pointer", fontSize: "0.85rem", padding: 0 }}
             >
               Staff Sign In
@@ -1009,9 +1100,241 @@ export const LandingPage = () => {
                 </button>
               </div>
             </form>
+
+            <div style={{ textAlign: "center", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
+              <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                Are you a customer trying to check tickets?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogin(false);
+                    setShowCustomerLogin(true);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--primary)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline"
+                  }}
+                >
+                  Customer Sign In &rarr;
+                </button>
+              </span>
+            </div>
           </div>
         </div>
       )}
+
+      {/* ─── Customer Sign In Modal ─── */}
+      {showCustomerLogin && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(3px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1.5rem"
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              padding: "2.5rem",
+              boxShadow: "var(--shadow-lg)",
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-dark)"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem" }}>
+              <ShieldCheck size={24} style={{ color: "var(--primary)" }} />
+              <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.6rem", color: "var(--text-main)" }}>
+                Customer Sign In
+              </h2>
+            </div>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+              Sign in to track your grievances, view audit timelines, and receive verified updates from companies.
+            </p>
+
+            {customerError && (
+              <div
+                style={{
+                  padding: "0.75rem 1rem",
+                  background: "var(--brick-light)",
+                  border: "1px solid var(--brick)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brick)",
+                  fontSize: "0.85rem",
+                  marginBottom: "1.25rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <AlertTriangle size={16} />
+                  <span>{customerError}</span>
+                </div>
+                {isStaffOnCustomerModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomerLogin(false);
+                      setShowLogin(true);
+                    }}
+                    style={{
+                      alignSelf: "flex-start",
+                      marginTop: "0.25rem",
+                      padding: "0.35rem 0.75rem",
+                      background: "var(--primary)",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "var(--radius-sm)",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Switch to Staff Sign In &rarr;
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Official Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                portalType="customer"
+                buttonText="Sign in with Google"
+                onSuccess={handleCustomerGoogleSuccess}
+                onError={handleCustomerAuthError}
+                width={380}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                Or Sign In with Email
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCustomerEmailLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
+                  Registered Email Address
+                </label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="customer@example.com"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.65rem 0.85rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-main)",
+                    color: "var(--text-main)",
+                    fontSize: "0.9rem"
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginBottom: "0.35rem" }}>
+                  Account Password
+                </label>
+                <input
+                  type="password"
+                  value={customerPassword}
+                  onChange={(e) => setCustomerPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.65rem 0.85rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--bg-main)",
+                    color: "var(--text-main)",
+                    fontSize: "0.9rem"
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                <button
+                  type="submit"
+                  disabled={customerLoading}
+                  className="btn btn-primary"
+                  style={{ flex: 1, padding: "0.65rem" }}
+                >
+                  {customerLoading ? "Signing in..." : "Sign In as Customer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerLogin(false)}
+                  className="btn btn-outline"
+                  style={{ padding: "0.65rem 1rem" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+
+            <div style={{ textAlign: "center", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
+              <span style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+                Are you a company employee or developer?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomerLogin(false);
+                    setShowLogin(true);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--primary)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: 0,
+                    textDecoration: "underline"
+                  }}
+                >
+                  Staff Sign In &rarr;
+                </button>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer First-Time Google Password Setup Modal */}
+      <SetPasswordModal
+        isOpen={showCustomerPasswordModal}
+        onClose={() => setShowCustomerPasswordModal(false)}
+        userName={user?.name}
+        userEmail={user?.email}
+        onSuccess={() => {
+          setShowCustomerPasswordModal(false);
+          const defaultSlug = companies[0]?.slug || "technova";
+          if (redirectUrl) navigate(redirectUrl);
+          else navigate(`/s/${defaultSlug}/my-complaints`);
+        }}
+      />
     </div>
   );
 };
