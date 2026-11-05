@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { GoogleSignInButton } from "../components/common/GoogleSignInButton";
 import {
   Shield,
   Building2,
@@ -131,6 +132,23 @@ export const LandingPage = () => {
       }
     } else {
       setError(result.error || "Authentication failed");
+    }
+  };
+
+  const handleGoogleStaffSuccess = (res) => {
+    setShowLogin(false);
+    const u = res.user;
+    if (redirectUrl) {
+      navigate(redirectUrl);
+    } else if (u.role === "superadmin") {
+      navigate("/admin");
+    } else if (u.role === "developer" || u.role === "employee") {
+      const companySlug = u.company?.slug;
+      if (companySlug) {
+        navigate(`/portal/${companySlug}`);
+      } else {
+        navigate("/admin");
+      }
     }
   };
 
@@ -905,6 +923,26 @@ export const LandingPage = () => {
                 {error}
               </div>
             )}
+
+            {/* Staff Google Sign-In */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <GoogleSignInButton
+                portalType="staff"
+                buttonText="Staff Sign in with Google"
+                onSuccess={handleGoogleStaffSuccess}
+                onError={(err) => setError(err)}
+                width={380}
+              />
+            </div>
+
+            {/* Divider */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>
+                Or Sign In with Email
+              </span>
+              <div style={{ flex: 1, height: "1px", background: "var(--border-color)" }} />
+            </div>
 
             {/* Form */}
             <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>

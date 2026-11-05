@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { GoogleSignInButton } from "../../components/common/GoogleSignInButton";
+import { SetPasswordModal } from "../../components/common/SetPasswordModal";
 import {
   Inbox,
   ArrowLeft,
@@ -44,6 +45,44 @@ export const MyComplaints = () => {
 
   // Demo sign in modal for guest visitors
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [authModalError, setAuthModalError] = useState("");
+  const [isStaffError, setIsStaffError] = useState(false);
+  const [staffPortalLink, setStaffPortalLink] = useState("");
+
+  const handleAuthSuccess = (res) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    setShowLoginModal(false);
+    if (res?.needsPasswordSetup) {
+      setShowPasswordModal(true);
+    }
+  };
+
+  const handleAuthError = (errMsg, res) => {
+    setAuthModalError(errMsg);
+    if (res?.isStaffAccount) {
+      setIsStaffError(true);
+      setStaffPortalLink(res.portalPath || "/portal");
+    } else {
+      setIsStaffError(false);
+    }
+  };
+
+  const handleDemoLogin = async (demoEmail) => {
+    setAuthModalError("");
+    setIsStaffError(false);
+    const cred = `demo_customer:${demoEmail.trim().toLowerCase()}`;
+    const result = await loginWithGoogle(cred, slug, "customer");
+    if (result.success) {
+      setShowLoginModal(false);
+      if (result.needsPasswordSetup) {
+        setShowPasswordModal(true);
+      }
+    } else {
+      handleAuthError(result.error || "Login failed", result);
+    }
+  };
 
   useEffect(() => {
     fetchCompanyData();
@@ -88,14 +127,6 @@ export const MyComplaints = () => {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async (demoEmail, demoName) => {
-    const cred = `demo_customer:${demoEmail}`;
-    const result = await loginWithGoogle(cred, slug);
-    if (result.success) {
-      setShowLoginModal(false);
     }
   };
 
@@ -758,12 +789,54 @@ export const MyComplaints = () => {
               Sign in with Google to view and track all active grievances lodged under your profile:
             </p>
 
+            {/* Error & Staff Account Notice */}
+            {authModalError && (
+              <div
+                style={{
+                  padding: "0.85rem 1rem",
+                  background: "var(--brick-light)",
+                  border: "1px solid var(--brick)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brick)",
+                  fontSize: "0.84rem",
+                  marginBottom: "1.25rem",
+                  lineHeight: 1.45,
+                }}
+              >
+                <div>{authModalError}</div>
+                {isStaffError && (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLoginModal(false);
+                        window.location.href = staffPortalLink;
+                      }}
+                      style={{
+                        padding: "0.45rem 0.9rem",
+                        background: "var(--primary)",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Go to Staff Portal &rarr;
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Official Google Sign-In */}
             <div style={{ marginBottom: "1.25rem" }}>
               <GoogleSignInButton
                 companySlug={slug}
-                onSuccess={() => setShowLoginModal(false)}
-                onError={(err) => alert(err)}
+                portalType="customer"
+                onSuccess={handleAuthSuccess}
+                onError={handleAuthError}
               />
             </div>
 
@@ -777,13 +850,11 @@ export const MyComplaints = () => {
             </div>
 
             <form
-              onSubmit={async (e) => {
+              onSubmit={(e) => {
                 e.preventDefault();
                 const emailInput = e.target.elements.email.value;
                 if (!emailInput) return;
-                const cred = `demo_customer:${emailInput.trim().toLowerCase()}`;
-                const res = await loginWithGoogle(cred, slug);
-                if (res.success) setShowLoginModal(false);
+                handleDemoLogin(emailInput);
               }}
               style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.25rem" }}
             >
@@ -846,6 +917,18 @@ export const MyComplaints = () => {
           </div>
         </div>
       )}
+
+      {/* First-Time Customer Password Setup Modal */}
+      <SetPasswordModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        userName={user?.name}
+        userEmail={user?.email}
+        onSuccess={() => {
+          setShowPasswordModal(false);
+          fetchMyTickets();
+        }}
+      />
     </div>
   );
 };

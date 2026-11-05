@@ -63,49 +63,86 @@ export const AuthProvider = ({ children }) => {
   );
 
   // ─── Email/Password Login ───
-  const loginUser = async (email, password) => {
+  const loginUser = async (email, password, portalType = "staff") => {
     try {
       setLoading(true);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, portalType }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || "Login failed" };
+        return {
+          success: false,
+          error: data.error || "Login failed",
+          isStaffAccount: Boolean(data.isStaffAccount),
+          isCustomerAccount: Boolean(data.isCustomerAccount),
+          portalPath: data.portalPath || null,
+        };
       }
 
       setToken(data.token);
       setUser(data.user);
       return { success: true, user: data.user };
     } catch (err) {
-      return { success: false, error: "Network error" };
+      return { success: false, error: "Network error during login" };
     } finally {
       setLoading(false);
     }
   };
 
   // ─── Google OAuth Login ───
-  const loginWithGoogle = async (credential, companySlug) => {
+  const loginWithGoogle = async (credential, companySlug, portalType = "customer") => {
     try {
       setLoading(true);
       const res = await fetch("/api/auth/google", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential, companySlug }),
+        body: JSON.stringify({ credential, companySlug, portalType }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        return { success: false, error: data.error || "Google login failed" };
+        return {
+          success: false,
+          error: data.error || "Google login failed",
+          isStaffAccount: Boolean(data.isStaffAccount),
+          isCustomerAccount: Boolean(data.isCustomerAccount),
+          portalPath: data.portalPath || null,
+        };
       }
 
       setToken(data.token);
       setUser(data.user);
-      return { success: true, user: data.user };
+      return {
+        success: true,
+        user: data.user,
+        isNewUser: Boolean(data.isNewUser),
+        needsPasswordSetup: Boolean(data.needsPasswordSetup),
+      };
     } catch (err) {
+      return { success: false, error: "Network error during Google authentication" };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── First-time Password Setup for New Google Customer ───
+  const setInitialPassword = async (password) => {
+    try {
+      setLoading(true);
+      const res = await apiFetch("/api/auth/set-initial-password", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Failed to set password" };
+      }
+      return { success: true, message: data.message };
+    } catch {
       return { success: false, error: "Network error" };
     } finally {
       setLoading(false);
@@ -131,6 +168,7 @@ export const AuthProvider = ({ children }) => {
         apiFetch,
         loginUser,
         loginWithGoogle,
+        setInitialPassword,
         logoutUser,
       }}
     >
