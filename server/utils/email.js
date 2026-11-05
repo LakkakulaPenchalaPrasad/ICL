@@ -286,6 +286,7 @@ export async function sendTicketCreatedConfirmationToCustomer({ company, ticket 
     portal_link: trackerLink,
     message,
     description: ticket.description,
+    resolved_by: 'Support Redressal Desk',
     created_at: new Date().toLocaleString(),
   };
 
