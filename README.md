@@ -96,6 +96,8 @@ ResolveIT defines four distinct hierarchical roles:
 
 ```
 ICL-Project/
+├── api/
+│   └── index.js            # Vercel serverless handler wrapping the Express app
 ├── server/
 │   ├── config/             # MongoDB connection and environment configuration
 │   ├── data/               # Reference seed data
@@ -124,6 +126,7 @@ ICL-Project/
 │   └── index.css           # Global stylesheet and responsive design system
 ├── .env.example            # Environment variables template
 ├── package.json            # NPM dependencies and scripts
+├── vercel.json             # Production rewrites for API + SPA routes
 └── vite.config.js          # Vite build configuration
 ```
 
@@ -132,7 +135,7 @@ ICL-Project/
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v18 or higher)
+- Node.js **v20 or higher** (`package.json` requires `>=20.0.0`)
 - npm
 - MongoDB Atlas cluster or local MongoDB instance
 
@@ -148,13 +151,14 @@ npm install
 ```
 
 ### 3. Configure environment variables
-Create a `.env` file in the project root:
+Create a `.env` file in the project root based on `.env.example`:
 
 ```env
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 NODE_ENV=development
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
 APP_URL=http://localhost:5173
 
 # Optional: EmailJS Transactional Alerts
@@ -231,3 +235,23 @@ Or start individually:
 - `PUT /api/companies/:slug/tickets/:ticketId` — Update status, SLA deadline, or reassign/redirect agent
 - `POST /api/companies/:slug/tickets/:ticketId/messages` — Add customer response or private team note
 - `POST /api/companies/:slug/tickets/:ticketId/rating` — Submit 1–5 star CSAT review
+
+---
+
+## Deployment
+
+The app is configured for **Vercel**:
+
+- Frontend is served as a Vite SPA.
+- `/api/*` requests are rewritten to `api/index.js`, which forwards them to the Express app.
+- Set the same environment variables from `.env.example` in the Vercel project settings (use a production `MONGODB_URI` and a strong `JWT_SECRET`).
+
+---
+
+## Contributing
+
+This is a completed team project. Small documentation and setup fixes are welcome:
+
+1. Fork the repo or work on a branch if you already have collaborator access.
+2. Keep README and `.env.example` in sync with the actual scripts and config.
+3. Open a pull request against `version-2` (or push directly if the team agrees).
