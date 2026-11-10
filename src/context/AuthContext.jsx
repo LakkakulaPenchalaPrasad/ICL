@@ -153,6 +153,14 @@ export const AuthProvider = ({ children }) => {
   const logoutUser = () => {
     setToken("");
     setUser(null);
+    try {
+      // Clear any redirect query param from URL so subsequent logins don't get trapped
+      if (window.location.search && window.location.search.includes("redirect=")) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {
+      // Ignore in environments without window.history
+    }
   };
 
   return (

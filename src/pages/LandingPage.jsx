@@ -117,6 +117,65 @@ export const LandingPage = () => {
   const params = new URLSearchParams(location.search);
   const redirectUrl = params.get("redirect");
 
+  const getAuthorizedRedirect = (targetUrl, userObj) => {
+    if (!targetUrl || typeof targetUrl !== "string") return null;
+    if (targetUrl === "/" || !targetUrl.startsWith("/")) return null;
+
+    // Super admin routes: ONLY accessible to superadmin
+    if (targetUrl.startsWith("/admin")) {
+      return userObj.role === "superadmin" ? targetUrl : null;
+    }
+
+    // Company Portal routes: accessible to superadmin or staff of that company
+    if (targetUrl.startsWith("/portal/")) {
+      if (userObj.role === "superadmin") return targetUrl;
+      if (userObj.role === "developer" || userObj.role === "employee") {
+        const companySlug = userObj.company?.slug;
+        if (companySlug && targetUrl.startsWith(`/portal/${companySlug}`)) {
+          return targetUrl;
+        }
+      }
+      return null;
+    }
+
+    // Customer complaint routes: only for customers
+    if (targetUrl.includes("/my-complaints")) {
+      return userObj.role === "customer" ? targetUrl : null;
+    }
+
+    // Public service pages /s/:slug
+    if (targetUrl.startsWith("/s/")) {
+      return targetUrl;
+    }
+
+    return null;
+  };
+
+  const navigateUserToDashboard = (u, customRedirect = null) => {
+    const authorizedUrl = getAuthorizedRedirect(customRedirect || redirectUrl, u);
+    if (authorizedUrl) {
+      navigate(authorizedUrl, { replace: true });
+      return;
+    }
+
+    // Default role-based routing
+    if (u.role === "superadmin") {
+      navigate("/admin", { replace: true });
+    } else if (u.role === "developer" || u.role === "employee") {
+      const companySlug = u.company?.slug;
+      if (companySlug) {
+        navigate(`/portal/${companySlug}`, { replace: true });
+      } else {
+        navigate("/admin", { replace: true });
+      }
+    } else if (u.role === "customer") {
+      const defaultSlug = companies[0]?.slug || "technova";
+      navigate(`/s/${defaultSlug}/my-complaints`, { replace: true });
+    } else {
+      navigate("/", { replace: true });
+    }
+  };
+
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     setError("");
@@ -127,22 +186,7 @@ export const LandingPage = () => {
 
     if (result.success) {
       setShowLogin(false);
-      const u = result.user;
-      if (redirectUrl) {
-        navigate(redirectUrl);
-      } else if (u.role === "superadmin") {
-        navigate("/admin");
-      } else if (u.role === "developer" || u.role === "employee") {
-        const companySlug = u.company?.slug;
-        if (companySlug) {
-          navigate(`/portal/${companySlug}`);
-        } else {
-          navigate("/admin");
-        }
-      } else if (u.role === "customer") {
-        const defaultSlug = companies[0]?.slug || "technova";
-        navigate(`/s/${defaultSlug}/my-complaints`);
-      }
+      navigateUserToDashboard(result.user);
     } else {
       setError(result.error || "Authentication failed");
       if (result.isCustomerAccount) {
@@ -161,9 +205,7 @@ export const LandingPage = () => {
 
     if (result.success) {
       setShowCustomerLogin(false);
-      const defaultSlug = companies[0]?.slug || "technova";
-      if (redirectUrl) navigate(redirectUrl);
-      else navigate(`/s/${defaultSlug}/my-complaints`);
+      navigateUserToDashboard(result.user);
     } else {
       setCustomerError(result.error || "Authentication failed");
       if (result.isStaffAccount) {
@@ -178,9 +220,7 @@ export const LandingPage = () => {
     if (res?.needsPasswordSetup) {
       setShowCustomerPasswordModal(true);
     } else {
-      const defaultSlug = companies[0]?.slug || "technova";
-      if (redirectUrl) navigate(redirectUrl);
-      else navigate(`/s/${defaultSlug}/my-complaints`);
+      navigateUserToDashboard(user || res?.user);
     }
   };
 
@@ -195,19 +235,7 @@ export const LandingPage = () => {
 
   const handleGoogleStaffSuccess = (res) => {
     setShowLogin(false);
-    const u = res.user;
-    if (redirectUrl) {
-      navigate(redirectUrl);
-    } else if (u.role === "superadmin") {
-      navigate("/admin");
-    } else if (u.role === "developer" || u.role === "employee") {
-      const companySlug = u.company?.slug;
-      if (companySlug) {
-        navigate(`/portal/${companySlug}`);
-      } else {
-        navigate("/admin");
-      }
-    }
+    navigateUserToDashboard(res.user);
   };
 
   const handleGoToPanel = () => {
@@ -1330,9 +1358,7 @@ export const LandingPage = () => {
         userEmail={user?.email}
         onSuccess={() => {
           setShowCustomerPasswordModal(false);
-          const defaultSlug = companies[0]?.slug || "technova";
-          if (redirectUrl) navigate(redirectUrl);
-          else navigate(`/s/${defaultSlug}/my-complaints`);
+          navigateUserToDashboard(user);
         }}
       />
     </div>
