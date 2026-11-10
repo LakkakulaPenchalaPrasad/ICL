@@ -21,6 +21,9 @@ export const DeveloperManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
+
   const fetchData = async () => {
     try {
       const [devRes, compRes] = await Promise.all([
@@ -150,6 +153,28 @@ export const DeveloperManagement = () => {
     const action = currentStatus === "active" ? "dismissed" : "activate";
     await apiFetch(`/api/admin/developers/${id}?action=${action}`, { method: "DELETE" });
     fetchData();
+  };
+
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    try {
+      const res = await apiFetch(`/api/admin/developers/${deactivateTarget._id}?action=dismissed`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setDeactivateTarget(null);
+        await fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to deactivate developer");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deactivating developer");
+    } finally {
+      setDeactivating(false);
+    }
   };
 
   const handleDeletePermanent = async () => {
@@ -284,7 +309,7 @@ export const DeveloperManagement = () => {
                   <span className={`badge status-${d.status}`}>{d.status}</span>
                 </td>
                 <td>
-                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "nowrap" }}>
                     <button
                       className="btn-sm btn-outline"
                       onClick={() => openEditModal(d)}
@@ -296,7 +321,7 @@ export const DeveloperManagement = () => {
                     {d.status === "active" ? (
                       <button
                         className="btn-sm btn-outline"
-                        onClick={() => toggleStatus(d._id, "active")}
+                        onClick={() => setDeactivateTarget(d)}
                         title="Deactivate Account"
                         style={{ borderColor: "var(--bronze)", color: "var(--bronze)" }}
                       >
@@ -460,6 +485,67 @@ export const DeveloperManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Deactivate Confirmation Modal ─── */}
+      {deactivateTarget && (
+        <div className="modal-backdrop" onClick={() => !deactivating && setDeactivateTarget(null)}>
+          <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <span className="page-label" style={{ color: "var(--bronze)" }}>
+                  ACCOUNT DEACTIVATION
+                </span>
+                <h3 className="modal-title" style={{ margin: 0, fontSize: "1.35rem" }}>
+                  Deactivate Developer
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setDeactivateTarget(null)}
+                disabled={deactivating}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-main)" }}>
+                Are you sure you want to deactivate developer <strong>{deactivateTarget.name}</strong> (
+                <code>{deactivateTarget.email}</code>)?
+              </p>
+              <p style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                Their login access will be temporarily disabled until reactivated. Their assigned company tickets will remain intact.
+              </p>
+            </div>
+
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setDeactivateTarget(null)}
+                disabled={deactivating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleConfirmDeactivate}
+                disabled={deactivating}
+                style={{
+                  background: "var(--bronze)",
+                  color: "#fff",
+                  borderColor: "var(--bronze)",
+                  fontWeight: 600,
+                }}
+              >
+                {deactivating ? "Deactivating..." : "Confirm Deactivate"}
+              </button>
+            </div>
           </div>
         </div>
       )}

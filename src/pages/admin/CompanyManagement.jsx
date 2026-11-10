@@ -27,6 +27,10 @@ export const CompanyManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Suspend company modal state
+  const [suspendTarget, setSuspendTarget] = useState(null);
+  const [suspending, setSuspending] = useState(false);
+
   const fetchData = async () => {
     try {
       const [compRes, devRes] = await Promise.all([
@@ -146,6 +150,29 @@ export const CompanyManagement = () => {
       body: JSON.stringify({ status: newStatus }),
     });
     fetchData();
+  };
+
+  const handleConfirmSuspend = async () => {
+    if (!suspendTarget) return;
+    setSuspending(true);
+    try {
+      const res = await apiFetch(`/api/admin/companies/${suspendTarget._id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "suspended" }),
+      });
+      if (res.ok) {
+        setSuspendTarget(null);
+        await fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to suspend company");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error suspending company");
+    } finally {
+      setSuspending(false);
+    }
   };
 
   const handleDeletePermanent = async () => {
@@ -280,7 +307,7 @@ export const CompanyManagement = () => {
                   <span className={`badge status-${c.status}`}>{c.status}</span>
                 </td>
                 <td>
-                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center", flexWrap: "nowrap" }}>
                     <a
                       href={`/s/${c.slug}`}
                       target="_blank"
@@ -299,14 +326,24 @@ export const CompanyManagement = () => {
                       <Pencil size={13} /> Edit
                     </button>
 
-                    <button
-                      className={`btn-sm ${c.status === "active" ? "btn-outline" : "btn-success"}`}
-                      onClick={() => toggleStatus(c._id, c.status)}
-                      title={c.status === "active" ? "Suspend company" : "Activate company"}
-                      style={c.status === "active" ? { borderColor: "var(--bronze)", color: "var(--bronze)" } : {}}
-                    >
-                      {c.status === "active" ? "Suspend" : "Activate"}
-                    </button>
+                    {c.status === "active" ? (
+                      <button
+                        className="btn-sm btn-outline"
+                        onClick={() => setSuspendTarget(c)}
+                        title="Suspend Company"
+                        style={{ borderColor: "var(--bronze)", color: "var(--bronze)" }}
+                      >
+                        Suspend
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-sm btn-success"
+                        onClick={() => toggleStatus(c._id, c.status)}
+                        title="Activate Company"
+                      >
+                        Activate
+                      </button>
+                    )}
 
                     <button
                       className="btn-sm btn-danger"
@@ -443,6 +480,67 @@ export const CompanyManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Suspend Confirmation Modal ─── */}
+      {suspendTarget && (
+        <div className="modal-backdrop" onClick={() => !suspending && setSuspendTarget(null)}>
+          <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <span className="page-label" style={{ color: "var(--bronze)" }}>
+                  COMPANY SUSPENSION
+                </span>
+                <h3 className="modal-title" style={{ margin: 0, fontSize: "1.35rem" }}>
+                  Suspend Company
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setSuspendTarget(null)}
+                disabled={suspending}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-main)" }}>
+                Are you sure you want to suspend company <strong>{suspendTarget.name}</strong> (
+                <code>/s/{suspendTarget.slug}</code>)?
+              </p>
+              <p style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                While suspended, customers will not be able to submit new complaints on this portal until the company is reactivated.
+              </p>
+            </div>
+
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setSuspendTarget(null)}
+                disabled={suspending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleConfirmSuspend}
+                disabled={suspending}
+                style={{
+                  background: "var(--bronze)",
+                  color: "#fff",
+                  borderColor: "var(--bronze)",
+                  fontWeight: 600,
+                }}
+              >
+                {suspending ? "Suspending..." : "Confirm Suspend"}
+              </button>
+            </div>
           </div>
         </div>
       )}
