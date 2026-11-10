@@ -1,17 +1,20 @@
 # ResolveIT - Multi-Tenant Customer Support & Grievance Redressal Platform
 
-> **Live Demo & Source Code**: Multi-tenant customer support platform built on the MERN stack (MongoDB Atlas, Express.js, React 19, Node.js).
+> **Live Production Deployment**: [https://resolveit-delta.vercel.app/](https://resolveit-delta.vercel.app/)  
+> **Architecture**: Multi-Tenant SaaS Customer Support & Dispute Resolution Platform (MongoDB Atlas, Express.js, React 19, Node.js).
 
 ResolveIT is a modern web application that lets multiple companies run their own completely independent, branded customer help desks from a single codebase and database. Think of it like Zendesk or Freshdesk, but lightweight, fast, and designed with clear boundaries between businesses.
 
 Every company gets its own web link (like `/s/tcs` or `/s/technova`), its own custom brand colors, its own FAQs, its own staff members, and its own support tickets. Company staff can never see tickets from another company, and customers get a clean, simple page where they can submit complaints, track ticket progress in real-time, and rate the resolution when it's done.
+
+![ResolveIT Landing Page](docs/images/01_landing_page.jpg)
 
 ---
 
 ## How It Works (The Big Picture)
 
 Imagine you run an IT company (like TCS) and you have hundreds of customers using your software. When something breaks:
-1. **The customer** goes to `https://yoursite.com/s/tcs`, searches common questions, and if they still need help, logs in with Google and submits a ticket.
+1. **The customer** visits `https://resolveit-delta.vercel.app/s/tcs`, searches common questions, and if they still need help, logs in with Google and submits a ticket.
 2. **The system** automatically inspects the complaint topic (for example, *Technical Support* vs. *Finance & Billing*) and instantly sends it to the right support employee's desk.
 3. **The support employee** logs into their internal portal (`/portal/tcs`), sees the ticket with a live countdown timer showing their deadline, chats with the customer, and adds private notes only teammates can read.
 4. **The customer** receives an automated email confirmation with their unique tracking number (e.g., `T-2026-0005`) and can check on it anytime without needing a password.
@@ -20,9 +23,9 @@ Imagine you run an IT company (like TCS) and you have hundreds of customers usin
 
 ---
 
-## The Four Roles Explained
+## Visual Tour & System Architecture
 
-Our system is built around four clearly separated roles. Each role has its own portal, its own permissions, and its own user experience.
+Our system is organized around four clear roles: **Super Admin**, **Company Developer**, **Support Employee**, and **Customer**. Here is how each part of the platform looks and operates.
 
 ```
                   ┌─────────────────────────────────┐
@@ -56,52 +59,77 @@ Our system is built around four clearly separated roles. Each role has its own p
    └──────────────────────┘                  └──────────────────────┘
 ```
 
+---
+
 ### 1. Super Admin (Platform Owner)
-- **Who this is**: The master administrator running the entire ResolveIT service.
-- **Where they log in**: `/admin`
+- **Who this is**: The master platform owner running the ResolveIT network.
+- **Where they log in**: `https://resolveit-delta.vercel.app/admin`
 - **What they can do**:
-  - Add new companies to the platform (name, website slug, industry, ticket prefix like `T-`).
-  - Create and link Company Developer accounts for each onboarded business.
-  - Suspend or activate companies with a single toggle switch.
-  - View executive metrics across all companies: total tickets, overall team members, platform resolution rate, and active caseloads.
-  - View every company's live customer desk or jump directly into any company's staff portal.
+  - **Platform Executive Dashboard**: Live counts of total companies, total tickets across all businesses, registered team members, and the global resolution percentage.
+  - **Company Directory & Management**: View every onboarded company, their assigned developer, employee headcounts, and ticket load. Add new companies or suspend/activate existing businesses with one click.
+  - **Developer Access Provisioning**: Create and assign Company Developer accounts for new businesses.
+  - **Direct Access**: Jump directly into any company's public service desk or internal staff portal.
+
+#### Super Admin Platform Dashboard
+![Super Admin Dashboard](docs/images/02_superadmin_dashboard.png)
+
+#### Super Admin Company Management Console
+![Super Admin Company Management](docs/images/07_company_management.png)
+
+---
 
 ### 2. Company Developer (Company Lead / Admin)
-- **Who this is**: The technical lead or department manager for a specific business (e.g., *Prasad L* managing *TCS*).
-- **Where they log in**: `/portal/:companySlug` (e.g., `/portal/tcs`)
+- **Who this is**: The technical lead or support manager for a specific business (e.g., *Prasad L* managing *TCS*).
+- **Where they log in**: `https://resolveit-delta.vercel.app/portal/tcs`
 - **What they can do**:
-  - **Brand Identity & Theme Studio**: Customize the company name, customer welcome heading, tagline, and pick exact brand colors (Primary & Accent) with a live, real-time preview of how the customer page will look.
-  - **Employee Management**: Hire new support agents, assign their department (e.g., *Technical Support*, *Logistics & Fulfilment*, *Billing*), and dismiss employees when needed.
-  - **Knowledge Base (FAQs)**: Add, edit, reorder, and toggle visibility for frequently asked questions so customers can solve common problems without even opening a ticket.
-  - **Complaint Categories**: Choose which categories customers see when filing a dispute.
-  - **Developer Triage Queue**: If a customer files a ticket in a category that has no assigned employee yet, the ticket automatically falls back to the Developer's queue so nothing ever gets lost. The developer can answer it or reassign it to any staff member.
+  - **Company Operations Dashboard**: Monitor company-specific ticket counts, current resolution rate, SLA compliance score (e.g. 100%), and status distribution (*Closed*, *Open*, *Escalated*).
+  - **Brand Identity & Theme Studio**: Customize company display name, welcome heading, tagline, and pick exact brand colors (Primary & Accent) with a live, real-time preview of how customers will see their desk.
+  - **Employee Team Roster**: Add new support employees, assign their department (*Technical Support*, *Logistics & Fulfilment*, *Billing Support*), and dismiss employees when needed.
+  - **Knowledge Base (FAQs)**: Add, edit, reorder, and toggle visibility for frequently asked questions so customers can solve common problems without opening a ticket.
+  - **Developer Triage Queue**: If a complaint is filed in a category that has no active employee yet, it automatically lands in the Developer's triage queue so no customer is ever left unanswered. The developer can resolve it personally or reassign it.
+
+#### Developer Operations & SLA Dashboard (TCS)
+![Developer Dashboard](docs/images/03_developer_dashboard.png)
+
+#### Brand Identity Studio & Live Preview Customizer
+![Service Page Customizer](docs/images/04_service_page_customizer.png)
+
+#### Employee Directory & Department Assignment
+![Employee Management](docs/images/05_employee_management.png)
+
+---
 
 ### 3. Support Employee (Department Specialist)
-- **Who this is**: Frontline support engineers and customer care agents (e.g., `emp1@tcs.com` assigned to *Technical Support*).
-- **Where they log in**: `/portal/:companySlug` (e.g., `/portal/tcs`)
+- **Who this is**: Frontline customer support engineers (e.g., `emp1@tcs.com` assigned to *Technical Support* at TCS).
+- **Where they log in**: `https://resolveit-delta.vercel.app/portal/tcs`
 - **What they can do**:
-  - **Personalized Desk**: See their direct caseload, active department queue, and resolved tickets.
-  - **Ledger Scopes**: Easily switch between tabs:
-    - *All Company Tickets* (all cases across the company)
-    - *Assigned to Me* (cases personally allocated to this agent)
-    - *My Department Queue* (all open tickets matching their department)
-    - *Unassigned Triage* (tickets waiting for someone to pick them up)
+  - **Personalized Desk**: See their direct caseload, active department queue, and resolved tickets with their department badge (*Technical Support*).
+  - **Ledger Scope Tabs**: Fast switching between four views:
+    - *All Company Tickets*: Complete overview of company disputes.
+    - *Assigned to Me*: Cases personally allocated to this agent.
+    - *My Department Queue*: Open cases matching their department (e.g., laptop crashes, login issues).
+    - *Unassigned Triage*: Inbound complaints waiting for an agent.
   - **Live Ticket Workspace**:
     - Chat directly with the customer in a public thread.
-    - Write private internal team notes (highlighted with yellow borders) that only staff can see — customers never see internal notes.
-    - Change ticket status (*Open*, *In Progress*, *Resolved*, *Closed*).
-    - Track the dynamic SLA countdown timer (e.g., Critical tickets must be answered in 4 hours).
+    - Write private internal team notes (highlighted with distinct borders) that only staff can see — customers never see internal notes.
+    - Update case status (*Open*, *In Progress*, *Resolved*, *Closed*).
+    - Track dynamic SLA countdown timers (e.g., Critical tickets must be answered in 4 hours).
+
+#### Employee Ticket Ledger & Queue Tabs
+![Employee Ticket Ledger](docs/images/06_employee_ticket_ledger.png)
+
+---
 
 ### 4. Customer (Public User)
-- **Who this is**: Any client, user, or consumer who needs help from a specific company.
-- **Where they go**: `/s/:companySlug` (e.g., `https://resolveit.com/s/tcs`)
+- **Who this is**: Any client, user, or consumer who needs assistance from a specific company.
+- **Where they go**: `https://resolveit-delta.vercel.app/s/tcs` (or `/s/technova`, `/s/quickcart`)
 - **What they can do**:
   - **Read FAQs**: Search questions categorized by topic (Billing, Technical, General) without needing to log in.
   - **Sign In with Google**: One-click login using standard Google OAuth 2.0. Their name, email, and avatar are automatically verified.
   - **File a Complaint**: Fill out a clean, validated complaint form:
-    - Choose Category & Urgency Priority (Low, Medium, High, Critical)
-    - Incident Date (constrained to past or present dates only)
-    - Detailed description and optional file attachments
+    - Choose Category & Urgency Priority (Low, Medium, High, Critical).
+    - Incident Date (constrained to past or present dates only).
+    - Detailed description and optional file attachments.
   - **Track Ticket Without Password**: Customers can enter their Ticket ID (e.g., `T-2026-0005`) into the public tracker and view live milestone progress and agent public replies. All internal notes, staff emails, and developer routing logs are shielded from the public for privacy.
   - **My Complaints Dashboard**: Logged-in customers can view their entire complaint history, reply back to support agents, and leave a 1 to 5 star rating once their issue is resolved.
 
@@ -109,17 +137,17 @@ Our system is built around four clearly separated roles. Each role has its own p
 
 ## Seeded Login Credentials
 
-Use these verified test accounts to explore each role across the platform:
+Use these verified test accounts to explore each role on the live production site:
 
 | Role | Company | Email | Password | Access URL | What to Test |
 |---|---|---|---|---|---|
-| **Super Admin** | Platform Master | `admin@resolveit.com` | `password123` | `/admin` | Add new companies, create developers, monitor all platform stats |
-| **TCS Developer** | TCS | `dev@tcs.com` | `password123` | `/portal/tcs` | Customize TCS brand colors, hire employees, manage FAQs & triage |
-| **TCS Employee** | TCS (Tech Support) | `emp1@tcs.com` | `password123` | `/portal/tcs` | View Technical Support queue, reply to tickets, add team notes |
-| **TechNova Developer** | TechNova Solutions | `dev@technova.com` | `password123` | `/portal/technova` | TechNova company portal management |
-| **QuickCart Developer** | QuickCart E-Commerce | `dev@quickcart.com` | `password123` | `/portal/quickcart` | QuickCart store customer care management |
+| **Super Admin** | Platform Master | `admin@resolveit.com` | `password123` | [Open `/admin`](https://resolveit-delta.vercel.app/admin) | Add new companies, create developers, monitor all platform stats |
+| **TCS Developer** | TCS | `dev@tcs.com` | `password123` | [Open `/portal/tcs`](https://resolveit-delta.vercel.app/portal/tcs) | Customize TCS brand colors, hire employees, manage FAQs & triage |
+| **TCS Employee** | TCS (Tech Support) | `emp1@tcs.com` | `password123` | [Open `/portal/tcs`](https://resolveit-delta.vercel.app/portal/tcs) | View Technical Support queue, reply to tickets, add team notes |
+| **TechNova Developer** | TechNova Solutions | `dev@technova.com` | `password123` | [Open `/portal/technova`](https://resolveit-delta.vercel.app/portal/technova) | TechNova company portal management |
+| **QuickCart Developer** | QuickCart E-Commerce | `dev@quickcart.com` | `password123` | [Open `/portal/quickcart`](https://resolveit-delta.vercel.app/portal/quickcart) | QuickCart store customer care management |
 
-> **Customer Access**: Customers do not need pre-registered accounts. Simply visit any company's service desk (like `http://localhost:5173/s/tcs`) and click **Customer Sign In** to log in instantly with your Google account or set a local password.
+> **Customer Access**: Customers do not need pre-registered credentials. Visit any company's service desk (like `https://resolveit-delta.vercel.app/s/tcs`) and click **Customer Sign In** to log in instantly with Google or set a password.
 
 ---
 
@@ -176,20 +204,13 @@ The system calculates `createdAt + priorityHours` and displays live color-coded 
 ICL-Project/
 ├── api/
 │   └── index.js            # Vercel serverless entry point wrapping the Express application
+├── docs/
+│   └── images/             # Screenshot documentation for Super Admin, Developer, and Employee portals
 ├── server/
 │   ├── config/             # MongoDB Atlas connection & environment setup
 │   ├── middleware/         # JWT auth guard, role validation, and tenant scoping
-│   ├── models/             # Mongoose schemas:
-│   │   ├── User.js         # Super admins, developers, employees, and customers
-│   │   ├── Company.js      # Company settings, branding palette, slugs, and prefixes
-│   │   ├── Ticket.js       # Complaints, message threads, internal notes, CSAT ratings
-│   │   ├── Article.js      # Knowledge base FAQs
-│   │   └── Category.js     # Complaint categories
-│   ├── routes/             # Scoped REST API route controllers:
-│   │   ├── admin.js        # Platform-wide company and developer management
-│   │   ├── auth.js         # Staff credential authentication & customer Google login
-│   │   ├── companies.js    # Public desk info, dashboard metrics, and employee roster
-│   │   └── tickets.js      # Ticket lodging, topic routing, public tracking, and replies
+│   ├── models/             # Mongoose schemas (User, Company, Ticket, Article, Category)
+│   ├── routes/             # Scoped REST API route controllers (admin, auth, companies, tickets)
 │   ├── templates/          # HTML email templates for customers and staff
 │   ├── utils/
 │   │   └── email.js        # EmailJS notification dispatch helper
@@ -215,7 +236,7 @@ ICL-Project/
 
 ---
 
-## Setup & Installation
+## Setup & Local Installation
 
 ### Prerequisites
 - Node.js **v20 or higher**
@@ -242,7 +263,7 @@ MONGODB_URI=your_mongodb_atlas_connection_string
 JWT_SECRET=your_secret_jwt_key
 NODE_ENV=development
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
-APP_URL=http://localhost:5173
+APP_URL=https://resolveit-delta.vercel.app
 
 # Optional: Transactional Email Notifications (EmailJS)
 EMAILJS_SERVICE_ID=your_emailjs_service_id
@@ -259,7 +280,7 @@ To populate the database with default companies, admin accounts, and sample tick
 node server/seedData.js
 ```
 
-### 5. Run the Application
+### 5. Run the Application Locally
 Run both backend and frontend concurrently:
 
 ```bash
@@ -267,19 +288,17 @@ npm start
 ```
 
 Or run them individually in separate terminals:
-- **Backend API Server**: `npm run server` (runs on `http://localhost:5000`)
-- **Frontend Client**: `npm run dev` (runs on `http://localhost:5173`)
-
-Open `http://localhost:5173` in your browser.
+- **Backend API Server**: `npm run server` (runs on port 5000)
+- **Frontend Client**: `npm run dev` (runs on port 5173)
 
 ---
 
-## Key URLs Quick Reference
+## Key URLs Quick Reference (Live Vercel App)
 
-- **Platform Homepage**: `http://localhost:5173/`
-- **Super Admin Console**: `http://localhost:5173/admin`
-- **TCS Public Support Desk**: `http://localhost:5173/s/tcs`
-- **TCS Staff Portal**: `http://localhost:5173/portal/tcs`
-- **TechNova Public Support Desk**: `http://localhost:5173/s/technova`
-- **TechNova Staff Portal**: `http://localhost:5173/portal/technova`
-- **Sample Ticket Tracking**: `http://localhost:5173/s/tcs/track/T-2026-0001`
+- **Platform Homepage**: [https://resolveit-delta.vercel.app/](https://resolveit-delta.vercel.app/)
+- **Super Admin Console**: [https://resolveit-delta.vercel.app/admin](https://resolveit-delta.vercel.app/admin)
+- **TCS Public Support Desk**: [https://resolveit-delta.vercel.app/s/tcs](https://resolveit-delta.vercel.app/s/tcs)
+- **TCS Staff Portal**: [https://resolveit-delta.vercel.app/portal/tcs](https://resolveit-delta.vercel.app/portal/tcs)
+- **TechNova Public Support Desk**: [https://resolveit-delta.vercel.app/s/technova](https://resolveit-delta.vercel.app/s/technova)
+- **TechNova Staff Portal**: [https://resolveit-delta.vercel.app/portal/technova](https://resolveit-delta.vercel.app/portal/technova)
+- **Sample Ticket Tracking**: [https://resolveit-delta.vercel.app/s/tcs/track/T-2026-0001](https://resolveit-delta.vercel.app/s/tcs/track/T-2026-0001)
