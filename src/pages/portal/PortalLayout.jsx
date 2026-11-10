@@ -33,7 +33,12 @@ export const PortalLayout = () => {
 
   const handleLogout = () => {
     logoutUser();
-    navigate("/");
+    navigate("/", { replace: true });
+    try {
+      if (window.location.search) {
+        window.history.replaceState({}, document.title, "/");
+      }
+    } catch {}
   };
 
   return (
