@@ -523,9 +523,8 @@ export const LandingPage = () => {
                     </div>
                     <button
                       type="button"
-                      onClick={() => navigate("/s/technova/track/TNS-2026-0001")}
                       className="btn btn-outline btn-sm"
-                      style={{ fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
+                      style={{ fontSize: "0.78rem", padding: "0.35rem 0.75rem", cursor: "default" }}
                     >
                       Track Live Ticket <ArrowRight size={12} />
                     </button>
