@@ -21,6 +21,9 @@ export const DeveloperManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
+
   const fetchData = async () => {
     try {
       const [devRes, compRes] = await Promise.all([
@@ -152,6 +155,28 @@ export const DeveloperManagement = () => {
     fetchData();
   };
 
+  const handleConfirmDeactivate = async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    try {
+      const res = await apiFetch(`/api/admin/developers/${deactivateTarget._id}?action=dismissed`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setDeactivateTarget(null);
+        await fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to deactivate developer");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deactivating developer");
+    } finally {
+      setDeactivating(false);
+    }
+  };
+
   const handleDeletePermanent = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -250,74 +275,121 @@ export const DeveloperManagement = () => {
         </div>
       )}
 
+      {/* Platform Executive Overview Bar */}
+      <div className="admin-kpi-grid">
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Total Developers</span>
+          <div className="admin-kpi-value">{developers.length}</div>
+          <span className="admin-kpi-desc">Registered platform leads</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Active Accounts</span>
+          <div className="admin-kpi-value" style={{ color: "var(--sage)" }}>
+            {developers.filter((d) => d.status === "active").length}
+          </div>
+          <span className="admin-kpi-desc">Enabled portal admins</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Deactivated</span>
+          <div
+            className="admin-kpi-value"
+            style={{
+              color: developers.some((d) => d.status === "dismissed") ? "var(--brick)" : "var(--text-muted)",
+            }}
+          >
+            {developers.filter((d) => d.status === "dismissed").length}
+          </div>
+          <span className="admin-kpi-desc">Suspended developer logins</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Linked Companies</span>
+          <div className="admin-kpi-value">
+            {developers.filter((d) => d.company).length}
+          </div>
+          <span className="admin-kpi-desc">Assigned company portals</span>
+        </div>
+      </div>
+
       {/* Developers Table */}
       <div className="data-table-container">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Assigned Company</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="col-developer">Developer & Credentials</th>
+              <th className="col-company">Assigned Company</th>
+              <th className="col-status">Status</th>
+              <th className="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             {developers.map((d) => (
               <tr key={d._id}>
-                <td className="font-medium">{d.name}</td>
-                <td>
-                  <span style={{ fontFamily: "monospace", fontSize: "0.9rem" }}>{d.email}</span>
+                <td className="col-developer">
+                  <div className="dev-entry">
+                    <span className="dev-name font-medium" style={{ fontSize: "0.96rem" }}>
+                      {d.name}
+                    </span>
+                    <span className="dev-email">{d.email}</span>
+                  </div>
                 </td>
-                <td>
+                <td className="col-company">
                   {d.company ? (
-                    <span>
-                      {d.company.name} <code className="slug-badge">{d.company.slug}</code>
-                    </span>
+                    <div className="company-entry">
+                      <span className="company-title" style={{ fontSize: "0.95rem" }}>
+                        {d.company.name}
+                      </span>
+                      <code className="slug-tag">/s/{d.company.slug}</code>
+                    </div>
                   ) : (
-                    <span className="text-muted" style={{ fontStyle: "italic" }}>
-                      Not assigned
-                    </span>
+                    <span className="unassigned-text">Unassigned</span>
                   )}
                 </td>
-                <td>
-                  <span className={`badge status-${d.status}`}>{d.status}</span>
+                <td className="col-status">
+                  <span
+                    className={`status-badge-refined ${
+                      d.status === "active" ? "status-refined-active" : "status-refined-suspended"
+                    }`}
+                  >
+                    <span className="status-dot-pulse"></span>
+                    {d.status === "active" ? "Active" : "Deactivated"}
+                  </span>
                 </td>
-                <td>
-                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                <td className="col-actions">
+                  <div className="refined-action-group refined-action-group-right">
                     <button
-                      className="btn-sm btn-outline"
+                      className="action-btn-refined action-btn-edit"
                       onClick={() => openEditModal(d)}
                       title="Edit Developer Details & Email"
                     >
-                      <Pencil size={13} /> Edit
+                      <Pencil size={12} />
+                      <span>Edit</span>
                     </button>
 
                     {d.status === "active" ? (
                       <button
-                        className="btn-sm btn-outline"
-                        onClick={() => toggleStatus(d._id, "active")}
+                        className="action-btn-refined action-btn-suspend"
+                        onClick={() => setDeactivateTarget(d)}
                         title="Deactivate Account"
-                        style={{ borderColor: "var(--bronze)", color: "var(--bronze)" }}
                       >
-                        Deactivate
+                        <span>Deactivate</span>
                       </button>
                     ) : (
                       <button
-                        className="btn-sm btn-success"
+                        className="action-btn-refined action-btn-activate"
                         onClick={() => toggleStatus(d._id, "dismissed")}
                         title="Reactivate Account"
                       >
-                        Activate
+                        <span>Activate</span>
                       </button>
                     )}
 
                     <button
-                      className="btn-sm btn-danger"
+                      className="action-btn-refined action-btn-remove"
                       onClick={() => setDeleteTarget(d)}
                       title="Permanently Remove Developer"
                     >
-                      <Trash2 size={13} /> Remove
+                      <Trash2 size={12} />
+                      <span>Remove</span>
                     </button>
                   </div>
                 </td>
@@ -325,7 +397,7 @@ export const DeveloperManagement = () => {
             ))}
             {developers.length === 0 && (
               <tr>
-                <td colSpan="5" className="empty-state">
+                <td colSpan="4" className="empty-state">
                   No developers created yet.
                 </td>
               </tr>
@@ -460,6 +532,67 @@ export const DeveloperManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Deactivate Confirmation Modal ─── */}
+      {deactivateTarget && (
+        <div className="modal-backdrop" onClick={() => !deactivating && setDeactivateTarget(null)}>
+          <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <span className="page-label" style={{ color: "var(--bronze)" }}>
+                  ACCOUNT DEACTIVATION
+                </span>
+                <h3 className="modal-title" style={{ margin: 0, fontSize: "1.35rem" }}>
+                  Deactivate Developer
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setDeactivateTarget(null)}
+                disabled={deactivating}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-main)" }}>
+                Are you sure you want to deactivate developer <strong>{deactivateTarget.name}</strong> (
+                <code>{deactivateTarget.email}</code>)?
+              </p>
+              <p style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                Their login access will be temporarily disabled until reactivated. Their assigned company tickets will remain intact.
+              </p>
+            </div>
+
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setDeactivateTarget(null)}
+                disabled={deactivating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleConfirmDeactivate}
+                disabled={deactivating}
+                style={{
+                  background: "var(--bronze)",
+                  color: "#fff",
+                  borderColor: "var(--bronze)",
+                  fontWeight: 600,
+                }}
+              >
+                {deactivating ? "Deactivating..." : "Confirm Deactivate"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -27,6 +27,10 @@ export const CompanyManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Suspend company modal state
+  const [suspendTarget, setSuspendTarget] = useState(null);
+  const [suspending, setSuspending] = useState(false);
+
   const fetchData = async () => {
     try {
       const [compRes, devRes] = await Promise.all([
@@ -148,6 +152,29 @@ export const CompanyManagement = () => {
     fetchData();
   };
 
+  const handleConfirmSuspend = async () => {
+    if (!suspendTarget) return;
+    setSuspending(true);
+    try {
+      const res = await apiFetch(`/api/admin/companies/${suspendTarget._id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "suspended" }),
+      });
+      if (res.ok) {
+        setSuspendTarget(null);
+        await fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to suspend company");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error suspending company");
+    } finally {
+      setSuspending(false);
+    }
+  };
+
   const handleDeletePermanent = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -233,87 +260,145 @@ export const CompanyManagement = () => {
         </div>
       )}
 
+      {/* Platform Executive Overview Bar */}
+      <div className="admin-kpi-grid">
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Total Organizations</span>
+          <div className="admin-kpi-value">{companies.length}</div>
+          <span className="admin-kpi-desc">Registered client portals</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Active Portals</span>
+          <div className="admin-kpi-value" style={{ color: "var(--sage)" }}>
+            {companies.filter((c) => c.status === "active").length}
+          </div>
+          <span className="admin-kpi-desc">Operational service desks</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Suspended Portals</span>
+          <div
+            className="admin-kpi-value"
+            style={{
+              color: companies.some((c) => c.status === "suspended") ? "var(--brick)" : "var(--text-muted)",
+            }}
+          >
+            {companies.filter((c) => c.status === "suspended").length}
+          </div>
+          <span className="admin-kpi-desc">Halted intake desks</span>
+        </div>
+        <div className="admin-kpi-card">
+          <span className="admin-kpi-label">Assigned Staff</span>
+          <div className="admin-kpi-value">
+            {companies.reduce((sum, c) => sum + (c.employeeCount || 0), 0)}
+          </div>
+          <span className="admin-kpi-desc">Active company employees</span>
+        </div>
+      </div>
+
       {/* Companies Table */}
       <div className="data-table-container">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Company</th>
-              <th>Slug</th>
-              <th>Industry</th>
-              <th>Prefix</th>
-              <th>Developer</th>
-              <th>Employees</th>
-              <th>Tickets</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="col-company">Company & Portal</th>
+              <th className="col-industry">Industry</th>
+              <th className="col-developer">Lead Developer</th>
+              <th className="col-num">Staff</th>
+              <th className="col-num">Tickets</th>
+              <th className="col-status">Status</th>
+              <th className="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
             {companies.map((c) => (
               <tr key={c._id}>
-                <td className="font-medium">{c.name}</td>
-                <td><code className="slug-badge">{c.slug}</code></td>
-                <td>{c.industry || "General"}</td>
-                <td>
-                  <code style={{ fontFamily: "monospace", fontSize: "0.85rem", color: "var(--bronze)" }}>
-                    {c.ticketPrefix || c.slug.toUpperCase()}
-                  </code>
-                </td>
-                <td>
-                  {c.developer?.name ? (
-                    <div>
-                      <div>{c.developer.name}</div>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {c.developer.email}
+                <td className="col-company">
+                  <div className="company-entry">
+                    <span className="company-title">{c.name}</span>
+                    <div className="company-meta-tags">
+                      <code className="slug-tag">/s/{c.slug}</code>
+                      <span className="prefix-tag" title="Ticket Prefix">
+                        Prefix: {c.ticketPrefix || c.slug.toUpperCase()}
                       </span>
                     </div>
+                  </div>
+                </td>
+                <td className="col-industry">
+                  <span className="industry-badge">{c.industry || "General"}</span>
+                </td>
+                <td className="col-developer">
+                  {c.developer?.name ? (
+                    <div className="dev-entry">
+                      <div className="dev-name">{c.developer.name}</div>
+                      <div className="dev-email">{c.developer.email}</div>
+                    </div>
                   ) : (
-                    <span className="text-muted" style={{ fontStyle: "italic" }}>
-                      Not assigned
-                    </span>
+                    <span className="unassigned-text">Unassigned</span>
                   )}
                 </td>
-                <td>{c.employeeCount || 0}</td>
-                <td>{c.ticketCount || 0}</td>
-                <td>
-                  <span className={`badge status-${c.status}`}>{c.status}</span>
+                <td className="col-num" style={{ textAlign: "center", fontWeight: 600 }}>
+                  {c.employeeCount || 0}
                 </td>
-                <td>
-                  <div className="action-buttons" style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                <td className="col-num" style={{ textAlign: "center", fontWeight: 700 }}>
+                  {c.ticketCount || 0}
+                </td>
+                <td className="col-status">
+                  <span
+                    className={`status-badge-refined ${
+                      c.status === "active" ? "status-refined-active" : "status-refined-suspended"
+                    }`}
+                  >
+                    <span className="status-dot-pulse"></span>
+                    {c.status === "active" ? "Active" : "Suspended"}
+                  </span>
+                </td>
+                <td className="col-actions">
+                  <div className="refined-action-group refined-action-group-right">
                     <a
                       href={`/s/${c.slug}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn-icon"
+                      className="action-btn-refined action-btn-desk"
                       title="View Public Service Desk"
                     >
-                      <ExternalLink size={14} />
+                      <ExternalLink size={12} />
+                      <span>Desk</span>
                     </a>
 
                     <button
-                      className="btn-sm btn-outline"
+                      className="action-btn-refined action-btn-edit"
                       onClick={() => openEditModal(c)}
                       title="Edit Company Details"
                     >
-                      <Pencil size={13} /> Edit
+                      <Pencil size={12} />
+                      <span>Edit</span>
                     </button>
 
-                    <button
-                      className={`btn-sm ${c.status === "active" ? "btn-outline" : "btn-success"}`}
-                      onClick={() => toggleStatus(c._id, c.status)}
-                      title={c.status === "active" ? "Suspend company" : "Activate company"}
-                      style={c.status === "active" ? { borderColor: "var(--bronze)", color: "var(--bronze)" } : {}}
-                    >
-                      {c.status === "active" ? "Suspend" : "Activate"}
-                    </button>
+                    {c.status === "active" ? (
+                      <button
+                        className="action-btn-refined action-btn-suspend"
+                        onClick={() => setSuspendTarget(c)}
+                        title="Suspend Company"
+                      >
+                        <span>Suspend</span>
+                      </button>
+                    ) : (
+                      <button
+                        className="action-btn-refined action-btn-activate"
+                        onClick={() => toggleStatus(c._id, c.status)}
+                        title="Activate Company"
+                      >
+                        <span>Activate</span>
+                      </button>
+                    )}
 
                     <button
-                      className="btn-sm btn-danger"
+                      className="action-btn-refined action-btn-remove"
                       onClick={() => setDeleteTarget(c)}
                       title="Permanently Remove Company"
                     >
-                      <Trash2 size={13} /> Remove
+                      <Trash2 size={12} />
+                      <span>Remove</span>
                     </button>
                   </div>
                 </td>
@@ -321,7 +406,7 @@ export const CompanyManagement = () => {
             ))}
             {companies.length === 0 && (
               <tr>
-                <td colSpan="9" className="empty-state">No companies registered yet.</td>
+                <td colSpan="7" className="empty-state">No companies registered yet.</td>
               </tr>
             )}
           </tbody>
@@ -443,6 +528,67 @@ export const CompanyManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Suspend Confirmation Modal ─── */}
+      {suspendTarget && (
+        <div className="modal-backdrop" onClick={() => !suspending && setSuspendTarget(null)}>
+          <div className="modal-dialog modal-md" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <span className="page-label" style={{ color: "var(--bronze)" }}>
+                  COMPANY SUSPENSION
+                </span>
+                <h3 className="modal-title" style={{ margin: 0, fontSize: "1.35rem" }}>
+                  Suspend Company
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setSuspendTarget(null)}
+                disabled={suspending}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ margin: 0, fontSize: "0.95rem", lineHeight: 1.6, color: "var(--text-main)" }}>
+                Are you sure you want to suspend company <strong>{suspendTarget.name}</strong> (
+                <code>/s/{suspendTarget.slug}</code>)?
+              </p>
+              <p style={{ marginTop: "0.75rem", fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                While suspended, customers will not be able to submit new complaints on this portal until the company is reactivated.
+              </p>
+            </div>
+
+            <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setSuspendTarget(null)}
+                disabled={suspending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleConfirmSuspend}
+                disabled={suspending}
+                style={{
+                  background: "var(--bronze)",
+                  color: "#fff",
+                  borderColor: "var(--bronze)",
+                  fontWeight: 600,
+                }}
+              >
+                {suspending ? "Suspending..." : "Confirm Suspend"}
+              </button>
+            </div>
           </div>
         </div>
       )}

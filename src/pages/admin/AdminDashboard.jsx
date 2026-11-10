@@ -116,37 +116,43 @@ export const AdminDashboard = () => {
                       <span style={{ fontWeight: 700 }}>{c.ticketCount ?? c.count ?? 0}</span>
                     </td>
                     <td>
-                      <span className={`badge status-${(c.status || "active").toLowerCase()}`}>
+                      <span
+                        className={`status-badge-refined ${
+                          (c.status || "active").toLowerCase() === "active"
+                            ? "status-refined-active"
+                            : "status-refined-suspended"
+                        }`}
+                      >
+                        <span className="status-dot-pulse"></span>
                         {c.status || "active"}
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "0.45rem", alignItems: "center" }}>
+                      <div className="refined-action-group">
                         <a
                           href={`/s/${c.slug}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="btn-sm btn-ghost"
-                          style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "0.3rem" }}
+                          className="action-btn-refined action-btn-desk"
                           title="Open public service page"
                         >
-                          <ExternalLink size={13} /> Service
+                          <ExternalLink size={12} />
+                          <span>Desk</span>
                         </a>
                         <Link
                           to={`/portal/${c.slug}`}
-                          className="btn-sm btn-outline"
-                          style={{ textDecoration: "none" }}
+                          className="action-btn-refined action-btn-edit"
                           title="Open internal company portal"
                         >
-                          Portal
+                          <span>Portal</span>
                         </Link>
                         <Link
                           to="/admin/companies"
-                          className="btn-sm btn-ghost"
-                          style={{ textDecoration: "none" }}
+                          className="action-btn-refined"
+                          style={{ color: "var(--text-muted)" }}
                           title="Manage company details"
                         >
-                          Manage
+                          <span>Manage</span>
                         </Link>
                       </div>
                     </td>
